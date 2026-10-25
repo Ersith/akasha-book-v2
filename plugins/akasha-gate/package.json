@@ -1,6 +1,6 @@
 {
-  "name": "@akasha-book/akasha-gate",
-  "version": "1.4.5-h10",
+  "name": "@akasha-book/gate",
+  "version": "1.4.5",
   "engines": {
     "node": ">=18"
   },

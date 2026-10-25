@@ -1,6 +1,6 @@
 {
-  "name": "@akasha-book/akasha-session",
-  "version": "0.3.9-h1",
+  "name": "@akasha-book/session",
+  "version": "0.3.8",
   "engines": {
     "node": ">=22.15.0"
   },

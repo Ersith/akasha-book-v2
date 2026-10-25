@@ -1,6 +1,6 @@
 {
-  "name": "@akasha-book/mcp-akasha",
-  "version": "1.1.6-h4",
+  "name": "@akasha-book/mcp",
+  "version": "1.1.7",
   "engines": {
     "node": ">=22.15.0"
   },
