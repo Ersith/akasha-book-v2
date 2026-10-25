@@ -284,7 +284,7 @@ export function apply(ctx, config = {}) {
   assertNoPlaceholders(config);
   const cfg = { ...DEFAULTS, ...config };
   if (!existsSync(cfg.akashaDir)) {
-    throw new Error('akasha-sleep: akashaDir 不存在：' + cfg.akashaDir + '。安装步骤：① git clone https://github.com/Ersith/akasha-book 并复制 core/ 到固定目录；② 替换 cordis.patch.yml 的 <AKASHA_DIR>（或设 AKASHA_DIR）；③ 重启宿主。');
+    throw new Error('akasha-sleep: akashaDir 不存在：' + cfg.akashaDir + '。安装步骤：① git clone https://github.com/Ersith/akasha-book-v2 并复制 core/ 到固定目录；② 替换 cordis.patch.yml 的 <AKASHA_DIR>（或设 AKASHA_DIR）；③ 重启宿主。');
   }
   // Empty optional prompts must use a string at the Harness API boundary.
   const registerContext = ({ text, ...entry }) => ctx.systemPrompt.context({

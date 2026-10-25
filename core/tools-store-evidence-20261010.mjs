@@ -23,7 +23,7 @@ for (const r of run.results) {
     dumpConfig: { verified: true, evidence: `一次性 DSH_HOME（${r.root}）：dsh --profile e3 --from-default-profile web --dump-config 取基线 → dsh plugin --profile e3 add file:<临时副本> → dump-config 含 ${r.pkg} → remove 后配置逐字回到基线。报告：_scratch/store-e3/${latest}（${r.at}）` },
     isolatedRuntime: { verified: true, evidence: `同一一次性 DSH_HOME 冷启动 dsh --profile e3 --host 127.0.0.1 --port <随机空闲端口> → HTTP 就绪（<500）→ SIGTERM 干净退出；dsh 版本 ${r.dshVersion}；阶段留痕 ${JSON.stringify(r.stages)}（${r.at}）` },
     realProfile: { verified: true, evidence: REAL },
-    externalReadback: { verified: true, evidence: `npm registry 公开读回 @akasha-book 对应包版本 ${NPM_VERSION[r.plugin]}（npm view）；GitHub 公开读回固定源 Commit ${sha.slice(0, 12)}（https://github.com/Ersith/akasha-book，${r.at}）` },
+    externalReadback: { verified: true, evidence: `npm registry 公开读回 @akasha-book 对应包版本 ${NPM_VERSION[r.plugin]}（npm view）；GitHub 公开读回固定源 Commit ${sha.slice(0, 12)}（https://github.com/Ersith/akasha-book-v2，${r.at}）` },
   };
   const p = join(OUT, `${r.plugin}.evidence.json`);
   writeFileSync(p, JSON.stringify(ev, null, 1), 'utf8');

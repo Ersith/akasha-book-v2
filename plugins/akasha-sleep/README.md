@@ -19,7 +19,7 @@
 
 ## 安装（必读）
 
-1. `git clone https://github.com/Ersith/akasha-book && cp -r akasha-book/core <目标目录>/core`
+1. `git clone https://github.com/Ersith/akasha-book-v2 && cp -r akasha-book/core <目标目录>/core`
 2. 把 `cordis.patch.yml` 里所有 `<AKASHA_DIR>` 换成 `<目标目录>/core` 的绝对路径；或删掉路径字段并设 `AKASHA_DIR=<目标目录>/core`
 3. **未替换占位符 / 目录不存在时，插件会明确报错拒绝启动**（fail-closed，不会静默降级）；日志与数据都在 `<AKASHA_DIR>` 内
 
@@ -120,6 +120,6 @@ npm pack
 
 ## 源与许可（Source & License）
 
-- 源仓库：https://github.com/Ersith/akasha-book
+- 源仓库：https://github.com/Ersith/akasha-book-v2
 - 本版本固定提交（pinned commit）：`5a55099586cfae4e7511ba433eaf202455d81c30`
 - 许可证：MIT（见仓库根 LICENSE）

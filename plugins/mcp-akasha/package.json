@@ -27,7 +27,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ersith/akasha-book.git",
+    "url": "git+https://github.com/Ersith/akasha-book-v2.git",
     "directory": "plugins/mcp-akasha"
   },
   "scripts": {

@@ -13,6 +13,6 @@
  },
  "externalReadback": {
   "verified": true,
-  "evidence": "npm registry 公开读回：@akasha-book/mcp 现有 1.0.0（本版 1.1.0 尚未发布）；GitHub 公开读回仓库固定 Commit 9f7076b3ec303d0d81131445ba19f13308b6426a（https://github.com/Ersith/akasha-book）（2026-10-10）"
+  "evidence": "npm registry 公开读回：@akasha-book/mcp 现有 1.0.0（本版 1.1.0 尚未发布）；GitHub 公开读回仓库固定 Commit 9f7076b3ec303d0d81131445ba19f13308b6426a（https://github.com/Ersith/akasha-book-v2）（2026-10-10）"
  }
 }

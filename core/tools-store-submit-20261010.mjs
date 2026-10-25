@@ -3,7 +3,7 @@
 // 每个插件一个 Issue（表单字段：repository / plugin-path / notes）。
 import { execFileSync } from 'node:child_process';
 
-const REPO_URL = 'https://github.com/Ersith/akasha-book';
+const REPO_URL = 'https://github.com/Ersith/akasha-book-v2';
 const TARGET = 'AI-Scarlett/DSH-Store';
 
 const PLUGINS = [

@@ -13,6 +13,6 @@
  },
  "externalReadback": {
   "verified": true,
-  "evidence": "npm registry 公开读回 @akasha-book 对应包版本 1.2.1（npm view）；GitHub 公开读回固定源 Commit d14a262cd394（https://github.com/Ersith/akasha-book，2026-10-10T11:51:44.789Z）"
+  "evidence": "npm registry 公开读回 @akasha-book 对应包版本 1.2.1（npm view）；GitHub 公开读回固定源 Commit d14a262cd394（https://github.com/Ersith/akasha-book-v2，2026-10-10T11:51:44.789Z）"
  }
 }

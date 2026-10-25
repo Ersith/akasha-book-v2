@@ -7,7 +7,7 @@
 ## Install (English)
 
 ```bash
-git clone https://github.com/Ersith/akasha-book
+git clone https://github.com/Ersith/akasha-book-v2
 cd akasha-book/core
 node test.mjs           # self-test (291 passed / 0 failed on the shipped snapshot)
 node akasha.mjs check   # validate all six stores
@@ -36,7 +36,7 @@ stores. For raw session lookup it defers to the host's built-in `session_search`
 ## 安装（必读）
 
 ```bash
-git clone https://github.com/Ersith/akasha-book
+git clone https://github.com/Ersith/akasha-book-v2
 cp -r akasha-book/core <目标目录>/core
 cd <目标目录>/core && node test.mjs && node akasha.mjs check
 ```

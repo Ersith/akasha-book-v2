@@ -43,7 +43,7 @@
 
 ## R6 · 发布上线（2026-10-07 晚）
 
-- 目标：GitHub 开源发布（账号 `Ersith`）——仓库 **`Ersith/akasha-book`**（public，默认分支 main）；初版 commit `3bb7834`（48 文件 / 5814 行）、tag **v0.1.0**、Release 附件 **6 件**（五插件 tgz + 论文 md）；README 安装行微调 commit `6f33be5`。
+- 目标：GitHub 开源发布（账号 `Ersith`）——仓库 **`Ersith/akasha-book-v2`**（public，默认分支 main）；初版 commit `3bb7834`（48 文件 / 5814 行）、tag **v0.1.0**、Release 附件 **6 件**（五插件 tgz + 论文 md）；README 安装行微调 commit `6f33be5`。
 - 发布前门（全绿）：core `test.mjs` **77/77**、四插件 selftest 全绿；凭据全程未落屏（仅进程内使用）；打包与仓库内容按 R5 口径。
 - 消费者侧冒烟：Release 附件公开下载 **HTTP 200**（`akasha-book-session-0.2.3.tgz`）。
 - 版权与许可：`LICENSE` = MIT（Copyright (c) 2026 Ersith）；插件 `private:true` 保留（npm 轨启用时再移除）。
