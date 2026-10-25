@@ -8,8 +8,8 @@
 
 ```bash
 git clone https://github.com/Ersith/akasha-book-v2
-cd akasha-book/core
-node test.mjs           # self-test (291 passed / 0 failed on the shipped snapshot)
+cd akasha-book-v2/core
+node test.mjs           # self-test (304 passed / 0 failed / 13 skipped on synthetic fixture)
 node akasha.mjs check   # validate all six stores
 ```
 
@@ -18,6 +18,12 @@ The five DSH plugins live in `plugins/` (`akasha-gate`, `akasha-hooks`, `akasha-
 replace the `<AKASHA_DIR>` / `<LOCAL_PATH>` placeholders in each `cordis.patch.yml`, then restart
 the host. The MCP bridge needs `args: ['<AKASHA_DIR>/mcp.mjs']` (it does not read `AKASHA_DIR`).
 If a placeholder is left unreplaced the plugin fails loudly instead of degrading silently.
+
+## Releases
+
+Latest: [`v0.2.0`](https://github.com/Ersith/akasha-book-v2/releases/tag/v0.2.0).
+Assets: five plugin tarballs, matching npm `@akasha-book/{gate,hooks,mcp,session,sleep}`.
+This repository ships neutral example data plus a synthetic test fixture; it contains **no real user memory snapshot**.
 
 **Companion systems**: Akasha runs standalone, but the full memory stack assumes **Hindsight** (repo-level memory)
 and **OpenViking** (user/persona memory) alongside it — Akasha skips their injected blocks and never writes into their
@@ -69,7 +75,7 @@ akasha\
   tools\       生成与留痕脚本群（import-frontier.mjs / verify-frontier-urls.mjs / frontier-audit-revise.mjs / harvest-*.mjs …）——全部幂等、只追加；文件清单见目录
   data\        canon / mirror / orphan / pricing / lexicon / frontier / session（JSONL，append-only；session＝会话层）
   data\negative.jsonl  负记忆辅助库（rejected-write / undecided）——不计入六库 check
-  logs\        hooks.jsonl（宿主钩子 @akasha-book/akasha-hooks 事件记录）+ query-log.jsonl（**查询监控侧线**，I-02：ts/via/cmd/query/hits/zero/ms/session/genre_render/ids；`AKASHA_QUERY_LOG=off` 可关）+ sleep-<date>*.json（蒸馏报告，同日不覆盖）+ sleep-state.json（水位线）+ inbox.jsonl（待办队列）
+  logs\        hooks.jsonl（宿主钩子 @akasha-book/hooks 事件记录）+ query-log.jsonl（**查询监控侧线**，I-02：ts/via/cmd/query/hits/zero/ms/session/genre_render/ids；`AKASHA_QUERY_LOG=off` 可关）+ sleep-<date>*.json（蒸馏报告，同日不覆盖）+ sleep-state.json（水位线）+ inbox.jsonl（待办队列）
 ```
 
 ## 快速开始
@@ -78,7 +84,7 @@ akasha\
 
 ```
 cd core                          # 开源仓：库根在 core/；活树跳过本步（已在 akasha/）
-node test.mjs                    # 自检（全绿 = 可交付）
+node test.mjs                    # 自检（304 passed / 0 failed / 13 skipped on synthetic fixture）
 node akasha.mjs check            # 校验全部数据（exit 非 0 = 有错）
 node akasha.mjs stats
 node akasha.mjs lookup 狼来了
@@ -134,15 +140,15 @@ node ../tests/run-review5.mjs # 【仅开源仓】四套行为回归：redaction
 
 ## 路线图
 
-- **M1 接入 ✅**：`@akasha-book/mcp-akasha`（`mcp__akasha__*` 十六工具在线，2026-10-06 起逐批增设）。
-- **M2 门控 ✅ v0**：AGENTS §6 来源态约定 + `audit`；`@akasha-book/akasha-hooks` 记录层 → `logs\hooks.jsonl`；`@akasha-book/akasha-gate`：`data\` 写入门 + `akasha:protocol` 系统提示（v1.1 起渲染时读库）。
-- **M3 睡眠 ✅ v0 → v1.4**：`@akasha-book/akasha-sleep`（调度与注入）+ `akasha\sleep.mjs`（蒸馏逻辑，逻辑归库）——空闲（6h 去抖）+ 定时兜底（1h）触发；手动 `node akasha.mjs sleep`；报告同日不覆盖。
+- **M1 接入 ✅**：`@akasha-book/mcp`（`mcp__akasha__*` 十六工具在线，2026-10-06 起逐批增设）。
+- **M2 门控 ✅ v0**：AGENTS §6 来源态约定 + `audit`；`@akasha-book/hooks` 记录层 → `logs\hooks.jsonl`；`@akasha-book/gate`：`data\` 写入门 + `akasha:protocol` 系统提示（v1.1 起渲染时读库）。
+- **M3 睡眠 ✅ v0 → v1.4**：`@akasha-book/sleep`（调度与注入）+ `akasha\sleep.mjs`（蒸馏逻辑，逻辑归库）——空闲（6h 去抖）+ 定时兜底（1h）触发；手动 `node akasha.mjs sleep`；报告同日不覆盖。
 - **M4 取料 ✅**：`brief`（跨六库 + 状态权重 + 时间坐标）/ `cross`（对位比较）/ `summary`（全库摘要）。
 - **M5–M8 ✅**：首次真实 harvest / `kit` 起床包 / `promote` 候选转正 / 修订链（`revise` + `currentRecords` + `frontier recheck`）。
 - **M9 运营增强 ✅（2026-10-07）**：检索子词回退（整词 ×1 + 中文 ≥3 字 bigram ×0.25，弱/强分层）；双时态字段；`show` 直读；`--since/--until` 时间过滤 + brief 时间坐标；sleep v2 逻辑归库 + 手动触发；测试 50/50。
 - **M10 核心补齐 ✅（2026-10-07，六项）**：情绪回写（`price --apply-store/--apply-id`）+ 病史注入（`kit.history`）+ 镜像结构匹配（`mirror match`）+ 输出后置审计与使用计数（hooks v1.1：假 id → `output-audit`、真 id → `usage`）+ 结果计数器（`metrics`）+ 回查条（sleep v1.5：失败窗口 → 脉搏条追一行）。测试 57/57；MCP 十六工具；插件 v1.5.0 / v1.1.0 **待重启激活**。
 - **M11 会话层 ✅（2026-10-07）**：单会话记忆层（`session.mjs`）——会话档案（含官方压缩掉的历史）→ 段级条目（结论优先）→ 检索 / 注入块；CLI `session index|lookup|context|stats|help` + MCP `akasha_session_lookup`（第 17 工具）；六库零改动，会话层数据独立（不入六库检索）。测试 57→**68/68**（含红→绿与收口点独立复核修复）；真实马拉松样品索引 1384 段 / 0.4s。计划：`docs\superpowers\plans\2026-10-07-session-layer-v0.md`。
-- **M12 小阿卡夏插件 ✅（2026-10-07，热生效）**：`@akasha-book/akasha-session` v0.1.1——自动增量索引（turn/end 去抖 30s + idle 追平 + 4min timer 兜底；stat 快路 + >16MB 自适应节流）+ 压缩事件行 + 每回合节奏条（order 134）。收口点复核（1 严重 + 7 次要）修复 `inject` 缺失等；selftest **11/11**（主套件 70/70）；安装返回 `applied`，真宿主 armed 实证。源码 `dsh-akasha-session\`；计划 `docs\superpowers\plans\2026-10-07-akasha-session-plugin.md`。
+- **M12 小阿卡夏插件 ✅（2026-10-07，热生效）**：`@akasha-book/session` v0.1.1——自动增量索引（turn/end 去抖 30s + idle 追平 + 4min timer 兜底；stat 快路 + >16MB 自适应节流）+ 压缩事件行 + 每回合节奏条（order 134）。收口点复核（1 严重 + 7 次要）修复 `inject` 缺失等；selftest **11/11**（主套件 70/70）；安装返回 `applied`，真宿主 armed 实证。源码 `dsh-akasha-session\`；计划 `docs\superpowers\plans\2026-10-07-akasha-session-plugin.md`。
 - **M13 抽象层「弧线树」✅（2026-10-07，会话层 v0.2）**：机械递归摘要树——按回合切块（L1 弧 → L2 幕，>2 块递归、≤3 层；gist 结论优先 + `extra` 评分扩面 + `treegen` 代际）；CLI `session tree [--build]` / `session node <id>` / `lookup --level nodes|segs` 跨层检索；导航纪律（树＝入口→停靠→ptr 下钻）。**度量**：保真（顶结论 100% / 提及 62% / 段 60%，`research\session-tree-v02-fidelity.md`）+ A/B 对照（树 **19/20** vs 平铺 **14/20**，结构题树独占，`research\session-tree-v02-ab-report.md`）；MemoryAgentBench 四能力题型对齐（T6）。测试 **72/72**；插件零改动（自动建树留 v0.3）。计划 `docs\superpowers\plans\2026-10-07-session-tree-v0.md`。
 - **M14 循环观测 P0 ✅（2026-10-07，小阿卡夏子功能）**：三环架构之**干跑观测**并入会话层插件 **v0.2.3**（restart-required）——流环（**现役格式＝`agent/assistant-stream` 帧**；`assistant/chunk` 系 V0 遗物）delta 累积 + 480 字符节流 + 8K 尾窗）+ turn 环（事件流缓存全文）+ 帧/类型探针 → `loop-watch` **只写观测线、绝不干预**；CLI `session loopwatch`；检测器 step=1（奇周期）+ punct 不含空白（2026-10-07 两遍复查修复批）。对照与综合设计：`research\loop-detect-opencode-vs-guard-20261007.md` / `loop-guard-synthesis-20261007.md`；复查报告 `research\session-family-review-20261007.md`；selftest **18/18**。P1 温和恢复（steer → cancel(keepInbox) → 降档）待 P0 数据 + 另裁定。
 
