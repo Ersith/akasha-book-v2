@@ -3,6 +3,8 @@
 // ESM 的静态 import 会在模块体之前求值，故必须在导入 test-core 之前设 AKASHA_ROOT。
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { existsSync as __existsSync } from 'node:fs';
+if (__existsSync(new URL('./data-snapshot/.synthetic', import.meta.url))) process.env.AKASHA_OSS_SYNTHETIC = '1';
 import { spawnSync } from 'node:child_process';
 
 const snapshot = fileURLToPath(new URL('./data-snapshot', import.meta.url));

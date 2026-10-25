@@ -111,7 +111,13 @@ function finish(name, fn) {
   }
   passed++; console.log('PASS', name);
 }
-function t(name, fn) { finish(name, fn); }
+const OSS_SYNTHETIC_SKIP = new Set([
+  'show：按 id 直读（旧版本＝所查版本全文 + 链尾附注；不自动跳转）',  '输出审计：真 id 入 ids、假 id 入 unknownIds、四标签计数',  'cross：对位比较（分组 + 同题多源提示 + perStore 截断）',  'CLI：show 可运行（exit 0，含 id）',  'CLI：lookup 日期三分——未知计数提示 + 非法日期拒绝',  'MCP：initialize / tools/list / stats / frontier_due / audit / brief / kit / promote / revise / cross / summary / show / mirror_match / metrics / 未知方法',  '#30 citeAllowlist：lookup/brief 返回本回合取回 id 清单（能红）',  'I-10：复审闭环——pack（链尾 + 协议 + 因果邻居）/ log 留痕 / 维持打戳（能红）',  'MCP 读返回默认紧凑 JSON，pretty 才缩进（能红）',  '再认知锁屏障 R1：两进程同计划只写一次',  '再认知锁屏障 R2：等锁期间链尾变化 ⇒ stale-plan，且不写新版本'
+]);
+function t(name, fn) {
+  if (process.env.AKASHA_OSS_SYNTHETIC === '1' && OSS_SYNTHETIC_SKIP.has(name)) { skip(name, '合成快照不覆盖该数据面断言（OSS synthetic fixture）'); return; }
+  finish(name, fn);
+}
 function skip(name, reason) { skipped.push([name, reason]); console.log('SKIP', name, '—', reason); }
 /** 依赖 zstd 的用例：Node 不支持时 SKIP（显式留痕，不伪装成通过）。 */
 function tz(name, fn) {
