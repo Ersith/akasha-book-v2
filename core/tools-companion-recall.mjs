@@ -9,7 +9,7 @@
 //   HINDSIGHT_API_TOKEN 可选
 // 退出码：0=有命中；1=无命中/降级；2=参数错误。
 
-import { hindsightHttpHooks, openvikingHttpHooks } from '../adapters.mjs';
+import { hindsightHttpHooks, openvikingHttpHooks } from './adapters.mjs';
 
 function parse(argv) {
   const out = { query: '', limit: 5, json: false, driver: 'hindsight', base: '', bank: '', token: '' };

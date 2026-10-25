@@ -22,7 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 // 2026-10-17（用户「门控太慢」）：p0 的并行 + 输入哈希缓存放独立模块——本文件有冻结的"比较面"计数，
 // 在这里加 `===` 会让 ⑮ 断言的站点数变动 ⇒ 新逻辑出文件，本文件只多一行 import 与一次调用。
-import { runChecks } from './p0-checks.mjs';
+import { runChecks } from './tools-p0-checks.mjs';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

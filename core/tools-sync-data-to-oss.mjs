@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 // 2026-10-19（审计 B）：出货副本不能依赖本机绝对路径——按本文件位置解析（活树/仓内两种布局都能找到）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const pickDir = (...cands) => cands.find((p) => existsSync(p)) ?? cands[cands.length - 1];
-import { scrub, residual, selfTest } from './redaction.mjs';
+import { scrub, residual, selfTest } from './tools-redaction.mjs';
 
 const DRY = process.argv.includes('--dry');
 const SRC = process.env.AKASHA_ROOT ? process.env.AKASHA_ROOT : pickDir(join(HERE, '..', 'data'), join(HERE, 'data'));

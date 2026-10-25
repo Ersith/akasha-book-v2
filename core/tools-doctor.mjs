@@ -24,7 +24,7 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { DATA, ROOT, parseJsonl, writeFileAtomic } from './lib.mjs';
-import { resolvePorts, healthOf } from '../companion.mjs';
+import { resolvePorts, healthOf } from './companion.mjs';
 import { SESSION_DEFAULTS, readSessionArchive, normalizeSid } from './session.mjs';
 
 const AKASHA_DIR = dirname(DATA);
