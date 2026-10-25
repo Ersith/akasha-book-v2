@@ -1,6 +1,6 @@
 {
-  "name": "@akasha-book/gate",
-  "version": "1.4.4",
+  "name": "@akasha-book/akasha-gate",
+  "version": "1.4.5-h10",
   "engines": {
     "node": ">=18"
   },
@@ -13,7 +13,11 @@
     "index.js",
     "cordis.patch.yml",
     "README.md",
-    "prompt-safety.js"
+    "prompt-safety.js",
+    "self-frame-provider.mjs",
+    "self-card-view.mjs",
+    "self-contribution-provider.mjs",
+    "self-frame-adapter.mjs"
   ],
   "dsh": {
     "bundle": {
@@ -22,19 +26,18 @@
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": "^0.2.0-rc.2",
-    "@deepseek-ai/cordis": "^4.0.4"
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-system-prompt": "^0.2.0-rc.2"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ersith/akasha-book-v2.git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
     "directory": "plugins/akasha-gate"
   },
   "scripts": {
-    "test": "node selftest.test.mjs",
-    "check": "node --check index.js"
-  },
-  "publishConfig": {
-    "access": "public"
+    "test": "node --test selftest.test.mjs self-frame-token.test.mjs self-card-view.test.mjs self-card-provider.test.mjs self-contribution-provider.test.mjs self-card-contract.test.mjs gate-lifecycle.test.mjs self-frame-adapter.test.mjs",
+    "check": "node --check index.js",
+    "prepack": "node --test selftest.test.mjs self-frame-token.test.mjs self-card-view.test.mjs self-card-provider.test.mjs self-contribution-provider.test.mjs self-card-contract.test.mjs gate-lifecycle.test.mjs self-frame-adapter.test.mjs"
   }
 }

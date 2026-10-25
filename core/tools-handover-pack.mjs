@@ -32,7 +32,7 @@ let recount = null;
 {
   // 2026-10-18（GPT 第三轮 / ④）：用**本次新建**的输出目录（先清残留旧裁决），
   //   并读**新产物**的 verdict；旧实现只正则抠 stdout 数字、不查退出码、校验的是另一处旧文件 ⇒ 无效输入可出包。
-  const OUT = join('D:/dsh-temp', 'handover-' + process.pid);
+  const OUT = join('<LOCAL_PATH>', 'handover-' + process.pid);
   rmSync(OUT, { recursive: true, force: true });
   const a = ['tools/gate.mjs', 'escalate', ...FILES.flatMap((f) => ['--slices', join(SDIR, f)]),
     '--task', 'handover-recount', '--out', OUT];

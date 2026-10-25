@@ -37,7 +37,7 @@ const DEFAULTS = {
 
 // ── 占位符守卫（2026-10-19 发布面 P0）──────────────────────────────
 // OSS 的 `cordis.patch.yml` 里 `args: ['<AKASHA_DIR>/mcp.mjs']` 是示例字面量。照抄不改时：
-// spawn 找不到文件 → 配合 `failOnStartupError:false` **静默降级为 0 工具**（22 个 mcp__akasha__* 全消失）。
+// spawn 找不到文件 → 配合 `failOnStartupError:false` **静默降级为 0 工具**（23 个 mcp__akasha__* 全消失）。
 // 这里明确抛错（fail closed）：让配置错误在启动时说话，不静默降级。
 const PLACEHOLDER_TOKEN = /<[A-Za-z][A-Za-z0-9_]{2,}>/;   // 大小写都认（2026-10-19 审计 B：小写/混合形态此前漏检）
 /** 递归找配置里的未替换占位符（只认全大写尖括号 token，不误伤普通文本）。 */

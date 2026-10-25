@@ -3,13 +3,13 @@
 #   也可以删掉这些路径字段，改用 AKASHA_DIR 环境变量（插件默认从它推导）。
 - insert:
     - id: akasha-sleep
-      name: '@akasha-book/sleep'
+      name: '@akasha-book/akasha-sleep'
       config:
         akashaDir: '<AKASHA_DIR>'
-        log: '<AKASHA_DIR>/logs\hooks.jsonl'
-        stateFile: '<AKASHA_DIR>/logs\sleep-state.json'
-        inboxFile: '<AKASHA_DIR>/logs\inbox.jsonl'
-        reportDir: '<AKASHA_DIR>/reports'
+        log: '<AKASHA_DIR>\logs\hooks.jsonl'
+        stateFile: '<AKASHA_DIR>\logs\sleep-state.json'
+        inboxFile: '<AKASHA_DIR>\logs\inbox.jsonl'
+        reportDir: '<AKASHA_DIR>\reports'
         minIntervalHours: 6
         timerCheckMs: 3600000
         contextOrder: 130

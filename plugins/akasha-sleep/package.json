@@ -1,6 +1,6 @@
 {
-  "name": "@akasha-book/sleep",
-  "version": "1.10.32",
+  "name": "@akasha-book/akasha-sleep",
+  "version": "1.12.4-h1",
   "engines": {
     "node": ">=18"
   },
@@ -27,14 +27,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ersith/akasha-book-v2.git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
     "directory": "plugins/akasha-sleep"
   },
   "scripts": {
     "test": "node selftest.test.mjs",
     "check": "node --check lib/index.js"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

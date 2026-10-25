@@ -3,7 +3,7 @@
 // 用法：
 //   node tools/companion-recall.mjs（OSS 仓：node core/tools-companion-recall.mjs） "查询词" [--limit 5] [--bank <bankId>] [--base <url>] [--token <t>] [--json]
 // 环境变量默认值：
-//   HINDSIGHT_API_URL  例 http://127.0.0.1:9077
+//   HINDSIGHT_API_URL  例 http://127.0.0.1:<PORT>
 //   HINDSIGHT_API_PORT 未设 URL 时用 http://127.0.0.1:<port>（默认 9077）
 //   HINDSIGHT_BANK_ID  默认 coding-agent::Harness
 //   HINDSIGHT_API_TOKEN 可选

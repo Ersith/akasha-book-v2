@@ -1,6 +1,6 @@
 // 模块 import 方向 lint（P4，2026-10-20）：读 contract.mjs，检查根级核心 .mjs 的层方向、断链、环与未登记模块。
 // 退出码：0 = 全绿；1 = 有错误。CI/本地同源；不写任何文件。
-import { checkImportDirection, CONTRACT_VERSION } from '../contract.mjs';
+import { checkImportDirection, CONTRACT_VERSION } from './contract.mjs';
 
 const r = checkImportDirection();
 if (r.ok) {

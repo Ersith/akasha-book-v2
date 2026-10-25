@@ -3,9 +3,9 @@
 #   也可以删掉这些路径字段，改用 AKASHA_DIR 环境变量（插件默认从它推导）。
 - insert:
     - id: akasha-hooks
-      name: '@akasha-book/hooks'
+      name: '@akasha-book/akasha-hooks'
       config:
-        log: '<AKASHA_DIR>/logs\hooks.jsonl'
+        log: '<AKASHA_DIR>\logs\hooks.jsonl'
         akashaDir: '<AKASHA_DIR>'
         idleDebounceMs: 600000
         logToolResults: true

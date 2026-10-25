@@ -214,6 +214,14 @@ writeFileSync(join(STUB, 'data', 'canon.jsonl'),
     tags: ['自我'],
     source: { type: '复现', ref: 'stub' },
     last_reviewed: '2026-01-01'
+  }) + '\n' +
+  JSON.stringify({
+    id: 'canon-exp-stub-20260101',
+    claim: 'stub 经验：未接线的能力不算记忆。',
+    tags: ['经验'],
+    source: { type: '复现', ref: 'stub' },
+    event_time: '2026-01-01',
+    last_reviewed: '2026-01-01'
   }) + '\n', 'utf8');
 const cStub = harness({ log: LOG, dataDir: DATA, akashaDir: STUB, sectionOrder: 700 });
 const libText = cStub.section.text();
@@ -224,6 +232,12 @@ assert.ok(String(libText).includes('akasha_kit'), '库文本含用法路由（�
 const selfStub = String(sectionOf(cStub, 'akasha:self').text());
 assert.ok(selfStub.includes('自我层') && selfStub.includes('canon-self-concept-stub'), '自我层：注入 tag『自我』的当前条目');
 assert.equal(sectionOf(cStub, 'akasha:self').order, 699, '自我层排在用法条之前（order-1）');
+
+// —— 经验索引（akasha:experience 只给卡片）——
+const expStub = String(sectionOf(cStub, 'akasha:experience').text());
+assert.ok(expStub.includes('经验索引') && expStub.includes('canon-exp-stub-20260101'), '经验索引：注入 tag『经验』的当前条目');
+assert.ok(expStub.includes('akasha://canon/canon-exp-stub-20260101'), '经验索引：带可回源 URI');
+assert.equal(sectionOf(cStub, 'akasha:experience').order, 701, '经验索引排在用法条之后（sectionOrder+1）');
 
 // 读不到库 → 回退兜底且不抛
 const cNo = harness({ log: LOG, dataDir: DATA, akashaDir: join(TMP, 'no-such-akasha-dir'), sectionOrder: 700 });

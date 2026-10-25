@@ -10,7 +10,7 @@
 > 缺任一层不报错，只是少了那层交叉记忆。详见仓库 README §配套系统。
 ## 安装（必读）
 
-1. `git clone https://github.com/Ersith/akasha-book-v2 && cp -r akasha-book/core <目标目录>/core`
+1. `git clone https://github.com/Ersith/akasha-book && cp -r akasha-book/core <目标目录>/core`
 2. 把 `cordis.patch.yml` 的 `<AKASHA_DIR>` 换成 `<目标目录>/core`；`command` 用 PATH 里的 `node`（或改成本机 node 绝对路径）
 3. `failOnStartupError: true`：占位符未替换 / 目录不存在 / mcp.mjs 缺失时会**明确报错**，不再静默消失
 
@@ -74,6 +74,6 @@ node selftest.test.mjs
 
 ## 源与许可（Source & License）
 
-- 源仓库：https://github.com/Ersith/akasha-book-v2
+- 源仓库：https://github.com/Ersith/akasha-book
 - 本版本固定提交（pinned commit）：`5a55099586cfae4e7511ba433eaf202455d81c30`
 - 许可证：MIT（见仓库根 LICENSE）

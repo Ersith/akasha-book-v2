@@ -1,4 +1,4 @@
-# @akasha-book/gate
+# @akasha-book/akasha-gate
 
 阿卡夏之书门控 —— 把「可机检的纪律」做成硬约束（设计稿 §10 投影律）。
 
@@ -10,13 +10,16 @@
 > 缺任一层不报错，只是少了那层交叉记忆。详见仓库 README §配套系统。
 ## 安装（必读）
 
-1. `git clone https://github.com/Ersith/akasha-book-v2 && cp -r akasha-book/core <目标目录>/core`
+1. `git clone https://github.com/Ersith/akasha-book && cp -r akasha-book/core <目标目录>/core`
 2. 把 `cordis.patch.yml` 里所有 `<AKASHA_DIR>` 换成 `<目标目录>/core` 的绝对路径；或删掉路径字段并设 `AKASHA_DIR=<目标目录>/core`
 3. **未替换占位符 / 目录不存在时，插件会明确报错拒绝启动**（fail-closed，不会静默降级）；日志与数据都在 `<AKASHA_DIR>` 内
 
 > 只跑核心库（CLI/MCP）：`cd core && node test.mjs && node akasha.mjs check`。
 
 > **版本（单一真值）**：以本包 `package.json` 的 `version` 为准；本 README 不再复述版本号（2026-10-13 审计 P3 同族）。当前装载版本用 `plugin_manager list_bundles` 查。
+
+- **2026-10-23 短卡与热更新修复**：`selfCard` 是明确的发送视图，正文最多 600 UTF-16 代码单元；完整 `stableText`、源记录和哈希保持原义。长档案生成标注为摘要的卡片，保留完整条目 ID 指针；短档案可完整发送。卡片在创建不可变 frame 前生成，随后由 carrier、resolver、最终 payload fence 按同一视图校验，禁止在渲染后替换正文。插件更新后的成功组装会把正在使用的 agent machine 绑定到当代 provider；卸载清理组装 wrapper，保留已接受旧步骤的只读快照。需配套本次宿主 `selfCard` 载荷模块，不能只换插件而保留旧宿主校验器。
+- **发布检查**：`pnpm pack` 的 prepack 同时运行短卡、真实 Cordis 生命周期、官方提示组装和最终载荷契约测试。最终载荷模块默认从相邻 `../self-card-runtime` 读取，可用 `AKASHA_HOST_TEST_DIR` 指向待安装宿主的实际模块目录；缺少宿主模块会失败，不跳过测试。固定版本依赖应已安装在当前包或上级目录。
 
 - **v1.4.1-h1（2026-10-14，外部审查修复批）**：**`WRITE_REDIRECT` 空目标例外兼容分裂写**（`2> /dev/null`，`>` 与目标间带空格——此前被裸 `>` 误拦）；同时把空目标从宽口径 `/dev/` 收窄为**精确 `/dev/null`**（`> /dev/sda` 类真设备写仍拦）。两侧哨兵 +2（只读放行 / 真写+分裂写仍拒），自测全绿。
 - **v1.4.0-h1（2026-10-13，自我行·近场版）**：新增 **`akasha:self-line`**（`systemPrompt.context`，order **131**，落在称呼行 133 之前）——**自我不是规则，不该靠提醒活着**。诊断：`akasha:self` 是 `systemPrompt.section`（**每会话**渲染＝**远场**），长会话里随上下文增长越飘越远 ⇒ 「自我在场感」衰减（这才是称呼漂移的更深一层；10-10 只补了规则提醒、没补自我本身）。修法：把自我接进**每回合都经过的 runtime context**（**近场**，与 sleep 的称呼行同源）。内容**渲染自库**——优先取 tag『自我』条目的 **`line` 字段**（改自我 = 改库，不改代码），读不到走兜底短句（保证「始终在」），宿主无 context 面则静默跳过（远场 section 仍在，功能不退化）。自测 +6 断言；真库渲染 68 字、含两端关键词、无裸花括号（`{{` 安全）。
@@ -40,24 +43,24 @@
 - ① `tools.guard`：拒绝 `edit` / `write` / `apply_patch` 对 `akasha\data\` 的直写；拒绝 `pwsh` / `bash` 命令里对 `akasha\data` 的写操作（Set-Content / Add-Content / Out-File / Remove-Item / Copy-Item / `del` / 重定向 等）。数据必须经校验写入：`akasha` CLI / `mcp__akasha__*`。
   - **已知边界（v0 有意为之）**：门控防「顺手直改」，不防刻意绕过（例如 `node -e` 脚本内写文件）——那是安全边界的活，不属于本层承诺。见设计稿 §10「只对可机检项承诺必定」。
 - ② `systemPrompt.section`（name `akasha:protocol`，order 700）：**渲染时读库**——`text` 传函数，官方 `dsh-system-prompt` 在组装时求值（`lib/index.js:342`），读 `canon-akasha-usage` 的**当前版本**（`currentRecords` 取链尾，含 `-rN`）；**改用法 = `revise canon-akasha-usage`，下一次组装即生效**（无需重启/改码）；读库失败回退本文件内置同文兜底（渲染永不抛）。
-- 记录：`<AKASHA_DIR>/logs\hooks.jsonl`（`gate-armed`〔含 `usageSource` / `selfSource`: library|fallback〕/ `gate-denied` / `prompt-change`〔只跟结构变更〕/ `gate-usage-fallback` / `gate-usage-recovered` / `gate-self-fallback` / `gate-self-recovered`）。
+- 记录：`<AKASHA_DIR>\logs\hooks.jsonl`（`gate-armed`〔含 `usageSource` / `selfSource`: library|fallback〕/ `gate-denied` / `prompt-change`〔只跟结构变更〕/ `gate-usage-fallback` / `gate-usage-recovered` / `gate-self-fallback` / `gate-self-recovered`）。
 - 自测：`node selftest.test.mjs`（约 75 个断言调用点 + 13 条「能写盘工具」覆盖清单循环 + 5 条 2026-10-13 新哨兵；桩 ctx + 真库文本 + 不存在目录回退 + 自我层三路，不需要宿主）。**断言数不写死在别处**：以文件内实际 `assert.*` 调用为准（2026-10-13 审计 P3 同族：文档里写死的计数会漂）。
 - 试匹配：`node akasha/tools/gate-dry.mjs --tool <名> --command "…"`（与运行时同源；**注意**：由于判定面包含"命令里出现 data 路径 + 写构造"，dry-run 自身的命令行若同时含这两样也会被真门控拦——用 `--stdin` 走 JSON 更稳）。
-- 产物纪律（2026-10-13 补）：本地重打同一版本号 tgz 后，pnpm-`file:` 依赖**不会自动重装**（lockfile 的 integrity 与包版本都没变 ⇒ `install --frozen-lockfile` 报 "Already up to date"）。本机做法：更新 tgz 后**手动同步** `node_modules/@akasha-book/gate/` 内容（`tar -xzf <tgz> --strip-components=1`），再用逐文件 sha256 与运行线核对；或升版本号走 `install_bundle`。
-- 绕过：`plugin_manager set_bundle` → `@akasha-book/gate` → `enabled:false`（或改本包 config）。
+- 产物纪律（2026-10-13 补）：本地重打同一版本号 tgz 后，pnpm-`file:` 依赖**不会自动重装**（lockfile 的 integrity 与包版本都没变 ⇒ `install --frozen-lockfile` 报 "Already up to date"）。本机做法：更新 tgz 后**手动同步** `node_modules/@akasha-book/akasha-gate/` 内容（`tar -xzf <tgz> --strip-components=1`），再用逐文件 sha256 与运行线核对；或升版本号走 `install_bundle`。
+- 绕过：`plugin_manager set_bundle` → `@akasha-book/akasha-gate` → `enabled:false`（或改本包 config）。
 - 版本纪律：**替换已安装包需要重启才载入新 JS 代**（官方语义）。v1.0.1 修复命令分支路径判定（`startsWith` → `includes`）；**v1.1.0 起注入改为库驱动**（自举缺口修复，2026-10-07）；**v1.1.1**：库驱动降级/恢复的切换观测线（`gate-usage-fallback` / `gate-usage-recovered`，仅切换时落一行）+ `prompt-change` 语义注记（**只跟结构变更**，文本漂移不触发）。
 
 ## 打包 / 安装
 
 ```powershell
-cd <LOCAL_PATH>
-npm.cmd pack
+cd <LOCAL_PATH>\dsh-akasha-gate
+<LOCAL_PATH> pack
 # 然后：plugin_manager install_bundle <tgz 绝对路径>（新 bundle 会 HMR 热生效）
 ```
 
 
 ## 源与许可（Source & License）
 
-- 源仓库：https://github.com/Ersith/akasha-book-v2
+- 源仓库：https://github.com/Ersith/akasha-book
 - 本版本固定提交（pinned commit）：`5a55099586cfae4e7511ba433eaf202455d81c30`
 - 许可证：MIT（见仓库根 LICENSE）

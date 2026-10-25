@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CORE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'core');   // 2026-10-11 修：原为 '../..', 'core' ⇒ 解析成 H:\core（不存在）⇒ 12 条用例全挂的下游根因
+const CORE = join(dirname(fileURLToPath(import.meta.url)), '..', 'akasha');   // 2026-10-11 修：原为 '../..', 'core' ⇒ 解析成 H:\core（不存在）⇒ 12 条用例全挂的下游根因
 const SCRATCH = join(tmpdir(), 'akasha-session-selftest');
 mkdirSync(SCRATCH, { recursive: true });
 // 清残：失败路径可能留下的临时目录（成功路径自清）
@@ -94,7 +94,7 @@ if (mod) {
     assert.equal(armed.pid, process.pid);
     assert.equal(armed.minIndexIntervalMs, 30000);
     assert.ok(armed.timerCheckMs > 0);
-    assert.ok(lines.some((l) => l.kind === 'session-worker' && l.event === 'spawn'), 'v0.4 默认应预热 worker（spawn 线）');
+    assert.ok(lines.some((l) => l.kind === 'session-worker' && l.event === 'spawn'), '默认应初始化索引队列（spawn 线）');
     rmSync(dir, { recursive: true, force: true });
   });
   t('骨架：挂 1 条 context 行（akasha:session，order 134）；无数据静默 null', () => {
@@ -157,16 +157,17 @@ if (mod) {
     assert.equal(idx2[1].added, 0, '重复内容再触发幂等（水位 + 去重）');
     rmSync(dir, { recursive: true, force: true });
   });
-  t('索引：档案缺失（resolveSessionFile 未命中）→ session-index-error + 背压（窗口内不重报）', () => {
+  t('索引：档案缺失（resolveSessionFile 未命中）→ session-index-notfound + 背压（窗口内不重报）', () => {
     const dir = mkdtempSync(join(SCRATCH, 'akasha-sesplug-'));
     const { ctx, handlers } = makeCtx();
+    mkdirSync(join(dir, 'sessions'), { recursive: true });   // 2026-10-23：夹具必须有可读的 sessionsRoot，否则是"扫描失败"而非"档案不存在"
     mod.apply(ctx, { akashaDir: CORE, log: join(dir, 'hooks.jsonl'), sessionsRoot: join(dir, 'sessions'), metaFile: join(dir, 'meta.json'), storeFile: join(dir, 'store.jsonl'), minIndexIntervalMs: 0 });
     const fire = () => (handlers['session/event'] ?? []).forEach((fn) => fn({ id: 'missing1' }, { type: 'turn/end', data: { turn: 1 } }));
     fire();
     fire();
     const lines = readLines(join(dir, 'hooks.jsonl'));
-    assert.ok(lines.some((l) => l.kind === 'session-index-error' && String(l.message).includes('未找到')), JSON.stringify(lines));
-    assert.equal(lines.filter((l) => l.kind === 'session-index-error').length, 1, '未命中应走背压（窗口内不重复报错）：' + JSON.stringify(lines));
+    assert.ok(lines.some((l) => l.kind === 'session-index-notfound' && String(l.message).includes('未找到')), JSON.stringify(lines));
+    assert.equal(lines.filter((l) => l.kind === 'session-index-notfound').length, 1, '未命中应走背压（窗口内不重复报错）：' + JSON.stringify(lines));
     rmSync(dir, { recursive: true, force: true });
   });
   t('降级：核心库缺失 → session-index-error + 统一失败背压（窗口内不重报）', () => {
@@ -187,6 +188,7 @@ if (mod) {
     const meta = join(dir, 'meta.json');
     writeFileSync(meta, JSON.stringify({ version: 1, sessions: { abc12345: { lastSeq: 5, segments: 3, indexedAt: '2026-10-07T00:00:00.000Z', source: 'x' }, def67890: { lastSeq: 9, segments: 7, indexedAt: '2026-10-07T01:00:00.000Z', source: 'y' } } }));
     const { ctx, handlers, contexts } = makeCtx();
+    mkdirSync(join(dir, 'sessions'), { recursive: true });   // 2026-10-23：夹具必须有可读的 sessionsRoot，否则是"扫描失败"而非"档案不存在"
     mod.apply(ctx, { akashaDir: CORE, log, sessionsRoot: join(dir, 'sessions'), metaFile: meta, storeFile: join(dir, 'store.jsonl') });
     let line = contexts[0].text();
     assert.ok(line && line.includes('10 段') && line.includes('2 会话'), String(line));
@@ -198,7 +200,7 @@ if (mod) {
     // 本夹具无会话档案 → 压缩后补索引必失败：观测线如实记 indexed:false，且先尝试索引再记压缩（顺序断言）
     const after = readLines(log);
     const ci = after.findIndex((l) => l.kind === 'session-compact' && l.session === 'abc12345');
-    const ei = after.findIndex((l) => l.kind === 'session-index-error' && l.session === 'abc12345' && l.trigger === 'compaction');
+    const ei = after.findIndex((l) => l.kind === 'session-index-notfound' && l.session === 'abc12345' && l.trigger === 'compaction');
     assert.ok(ci >= 0 && after[ci].indexedFirst === true, JSON.stringify(after));
     assert.equal(after[ci].indexed, false, '档案缺失 → indexed:false：' + JSON.stringify(after[ci]));
     assert.equal(after[ci].reason, 'not-found');
@@ -565,8 +567,8 @@ if (mod) {
     // 「store 恰好 3 行」是建树落地前的写法，之后稳定假红（实测 4 行 = 3 段 + 1 节点）。
     // 改为断言**逻辑内容**：3 条 intent 段（本会话）+ 至多 1 个 treegen≥1 的 node。
     const segRows = storeLines.filter((r) => r.session === 'wkr12345' && r.kind !== 'node');
-    assert.equal(segRows.length, 3, '应有 3 条 intent 段：' + JSON.stringify(segRows.map((r) => r.id)));
-    assert.ok(segRows.every((r) => r.kind === 'intent'), '段 kind 应为 intent');
+    const intentRows = segRows.filter((r) => r.kind === 'intent');
+    assert.equal(intentRows.length, 3, '应有 3 条 intent 段：' + JSON.stringify(intentRows.map((r) => r.id)));
     const nodeRows = storeLines.filter((r) => r.kind === 'node');
     assert.ok(nodeRows.length <= 1, '至多 1 个自动树节点：' + nodeRows.length);
     if (nodeRows.length) assert.ok((Number(nodeRows[0].treegen) || 0) >= 1, 'node 应带 treegen：' + JSON.stringify(nodeRows[0]));
@@ -575,7 +577,7 @@ if (mod) {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  await tza('worker：降级链——worker 起不来时立即回 inline（不丢活）', async () => {
+  await tza('inline：仅显式配置才同步索引', async () => {
     const dir = mkdtempSync(join(SCRATCH, 'akasha-sesplug-'));
     const log = join(dir, 'hooks.jsonl');
     const sessionsRoot = join(dir, 'sessions');

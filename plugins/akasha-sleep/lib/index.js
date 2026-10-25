@@ -51,6 +51,15 @@ const DEFAULTS = {
   contextOrder: 130,
   pulseOrder: 132,
   addressOrder: 133,
+  // P0 注入升级：sleep 拥有的 address 稳定段 + sleep/parallel/pulse 动态段。
+  // packMode=false 时完全保留旧路径；模块/构包失败也回退旧路径。
+  packMode: true,
+  packScopeSafe: false,
+  packMaxTokens: 2400,
+  packOrder: 129,
+  packStartOrder: 129,
+  packStableOrder: 131.5,
+  packDynamicOrder: 132,
   preflightOrder: 135, // C1｜易错点前置
   statefulOrder: 134,  // C3｜断言前把关（order 134 < 135 ⇒ 先渲染，命中时 C1 让位）
   gateOrder: 136,      // 门档｜重要工作自动挂（2026-10-15；排在 C3/C1 之后，不扰动既有的让位次序）
@@ -158,7 +167,13 @@ export function judgeIdleTurn({ hasText, toolCalls, tail } = {}) {
 /** S4（2026-10-13）：尾部窗口读 + 取「最近一条非注入 intent 的 gist」——两个纯函数。
  *  做成**顶层导出**（而不是埋在 apply 里）的唯一理由：自测要拿它们做等价对照；
  *  生产路径（apply 内的 akasha:stateful 状态条）调用的就是这两个导出，不存在「测试一份、生产另一份」。 */
-export const TAIL_WINDOW_BYTES = 256 * 1024;
+// 2026-10-23：尾窗改可配置（默认 256KiB 不变）。背景：gate-window-miss 累计 1103 次，
+//   触发条件是「会话文件 ≥ 窗口」且尾窗里未命中 intent —— **可能是意图在窗口外，也可能本回合确实没有**（原因未确认）。
+//   2026-10-23 GPT 审查更正：**不必然每回合全读 260MB**——写入端维护按会话的 intent 小索引/字节偏移，
+//   读取端只查当前会话 + 有界回退，是可行第三条路（未实现，留作后续）。
+//   本改动只是**缓解措施**：让大水档用户把窗口调大（AKASHA_TAIL_WINDOW=1048576），默认行为不变。
+const TAIL_WINDOW_ENV = Number(process.env.AKASHA_TAIL_WINDOW);
+export const TAIL_WINDOW_BYTES = Number.isFinite(TAIL_WINDOW_ENV) && TAIL_WINDOW_ENV >= 64 * 1024 ? Math.floor(TAIL_WINDOW_ENV) : 256 * 1024;
 export function tailReadText(file, maxBytes = TAIL_WINDOW_BYTES) {
   const st = statSync(file);
   const start = Math.max(0, st.size - maxBytes);
@@ -284,15 +299,17 @@ export function apply(ctx, config = {}) {
   assertNoPlaceholders(config);
   const cfg = { ...DEFAULTS, ...config };
   if (!existsSync(cfg.akashaDir)) {
-    throw new Error('akasha-sleep: akashaDir 不存在：' + cfg.akashaDir + '。安装步骤：① git clone https://github.com/Ersith/akasha-book-v2 并复制 core/ 到固定目录；② 替换 cordis.patch.yml 的 <AKASHA_DIR>（或设 AKASHA_DIR）；③ 重启宿主。');
+    throw new Error('akasha-sleep: akashaDir 不存在：' + cfg.akashaDir + '。安装步骤：① git clone https://github.com/Ersith/akasha-book 并复制 core/ 到固定目录；② 替换 cordis.patch.yml 的 <AKASHA_DIR>（或设 AKASHA_DIR）；③ 重启宿主。');
   }
   // Empty optional prompts must use a string at the Harness API boundary.
-  const registerContext = ({ text, ...entry }) => ctx.systemPrompt.context({
-    ...entry,
-    text: typeof text === 'function'
+  const ownedContexts = new Map();
+  const registerContext = ({ text, ...entry }) => {
+    const wrapped = typeof text === 'function'
       ? (context) => text(context) ?? ''
-      : text ?? '',
-  });
+      : text ?? '';
+    ownedContexts.set(entry.name, { ...entry, text: wrapped });
+    return ctx.systemPrompt.context({ ...entry, text: wrapped });
+  };
   const require_ = createRequire(import.meta.url);
   const reportDir = join(cfg.akashaDir, 'logs');
   const stateFile = cfg.stateFile || join(reportDir, 'sleep-state.json');
@@ -308,6 +325,155 @@ export function apply(ctx, config = {}) {
 
   // 核心库（蒸馏逻辑）动态加载：插件只做调度与注入；缺文件时降级留痕（不失活）。
   const core = () => require_(join(cfg.akashaDir, 'sleep.mjs'));
+
+  // P0：context-pack 只做同步纯函数；加载失败保持旧注入，不让 apply 失败。
+  const packCore = (() => {
+    try {
+      const m = require_(join(cfg.akashaDir, 'context-pack.mjs'));
+      if (m && typeof m.buildContextPack === 'function' && m.SCHEMA_VERSION === 'akasha-pack/v1') return m;
+    } catch { /* 旧路径 */ }
+    return null;
+  })();
+  const packOrderDefault = Number(cfg.contextOrder) === 130
+    && Number(cfg.packOrder) === 129
+    && Number(cfg.parallelOrder ?? 131) === 131
+    && Number(cfg.pulseOrder) === 132
+    && Number(cfg.addressOrder) === 133;
+  const packScopeSafe = cfg.packScopeSafe === true;
+  const packEnabled = cfg.packMode !== false && packScopeSafe && !!packCore && packOrderDefault;
+  // A 保留旧四槽；启用时 pack 只是额外 provider，成功抑制旧槽，失败/缺席时旧槽 legacy。
+  const registerLegacyContext = registerContext;
+  const packFrames = new WeakMap();
+
+  function renderSleepText(context) {
+    retarget(renderSidOf(context));
+    try { return core().renderContextLine(readState()); }
+    catch { return '阿卡夏·睡眠：核心库不可用（akasha\\sleep.mjs 缺失或损坏）。'; }
+  }
+  function renderPulseText(context) {
+    retarget(renderSidOf(context));
+    try {
+      const lib = require_(join(cfg.akashaDir, 'lib.mjs'));
+      const lines = [core().renderPulseLine(lib.pulse())];
+      const recall = core().renderRecallLine(S().recentFailures, Date.now());
+      if (recall) lines.push(recall);
+      const rl = reviewLagState.value;
+      if (rl && rl.code === 1 && rl.line) {
+        const n = (/：(\d+)\s*个/.exec(rl.line) || [])[1];
+        const when = reviewLagState.checkedAt ? ` · 检于 ${stampOf(reviewLagState.checkedAt)}` : '';
+        lines.push(clip(`⚠ 审核面滞后（改了没审${when}）：` + (n ? `${n} 件核心件在审核戳后被改` : rl.line.replace(/^⚠\s*审核面滞后：/, ''))));
+      }
+      return lines.filter(Boolean).join('\n') || '';
+    } catch { return ''; }
+  }
+  function renderParallelText(context) {
+    const eventSid = curSid;
+    retarget(renderSidOf(context));
+    try {
+      const sid = renderSidOf(context);
+      const sessionId = context?.session?.id ?? context?.agent?.session?.id ?? null;
+      const exclude = [sid, sessionId, eventSid].filter(Boolean);
+      if (exclude.length === 0) return '';
+      const p = require_(join(cfg.akashaDir, 'parallel.mjs'));
+      const r = p.collectParallel({
+        file: join(cfg.akashaDir, 'data', 'session.jsonl'),
+        metaFile: join(cfg.akashaDir, 'data', 'session-meta.json'),
+        exclude,
+        nowMs: Date.now(),
+        windowMinutes: 60,
+        limit: 2
+      });
+      const feed = p.renderParallelFeed(r);
+      return feed ? safeInject(feed, { untrusted: true }) : '';
+    } catch { return ''; }
+  }
+  function renderAddressText(context) {
+    retarget(renderSidOf(context));
+    try {
+      const lib = require_(join(cfg.akashaDir, 'lib.mjs'));
+      const recs = lib.currentRecords(lib.loadStore('canon').records);
+      const hit = recs.filter((r) => String(r.id).startsWith('canon-address-layers')).pop();
+      if (hit && typeof hit.claim === 'string') return safeInject(core().renderAddressLine(hit.claim));
+    } catch { /* 读库失败 → 兜底短句 */ }
+    return safeInject(core().renderAddressLine(''));
+  }
+
+  // 有效 provider 校验：layers.merge 与宿主 refresh 使用同一解析；任一槽位被 scope 覆盖、换序或缺失即回退。
+  function packProvidersValid(context) {
+    try {
+      const layers = ctx.systemPrompt?.layers;
+      if (!layers || typeof layers.merge !== 'function') return false;
+      const scope = context && typeof context === 'object' ? (context.scope ?? ctx.scope) : ctx.scope;
+      const effective = layers.merge(scope, (layer) => layer.contexts);
+      const names = ['akasha:pack', 'akasha:sleep', 'akasha:parallel', 'akasha:pulse', 'akasha:address'];
+      for (const name of names) {
+        const own = ownedContexts.get(name);
+        const got = effective.get(name);
+        if (!own || !got) return false;
+        if (got.text !== own.text || got.order !== own.order || got.required !== own.required) return false;
+      }
+      return true;
+    } catch { return false; }
+  }
+
+  // 每次 assemble/refresh 使用宿主新建的 context 对象作为本帧身份；不再用 TTL 猜轮次。
+  function startPackFrame(context) {
+    if (!packEnabled || !context || typeof context !== 'object') return null;
+    if (packFrames.get(context)?.legacy) return null;   // 旧槽已先执行：本轮固定 legacy
+    try {
+      if (!packProvidersValid(context)) throw new Error('effective-provider-changed');
+      const stableText = renderAddressText(context);
+      if (!stableText) throw new Error('stable address 为空');
+      const dynamic = [];
+      const sleepText = renderSleepText(context);
+      if (sleepText) dynamic.push({ id: 'sleep', order: 1, text: sleepText });
+      const parallelText = renderParallelText(context);
+      if (parallelText) dynamic.push({ id: 'parallel', order: 2, text: parallelText });
+      const pulseText = renderPulseText(context);
+      if (pulseText) dynamic.push({ id: 'pulse', order: 3, text: pulseText });
+      const asOf = new Date().toISOString();
+      const sourceRevisions = {};
+      const pack = packCore.buildContextPack({
+        stable: [{ id: 'address', order: 1, text: stableText, source: { kind: 'canon', id: 'canon-address-layers' } }],
+        dynamic,
+        maxTokens: cfg.packMaxTokens,
+        asOf,
+        sourceRevisions,
+      });
+      const frame = { ok: true, pack, at: Date.now() };
+      packFrames.set(context, frame);
+      log({
+        kind: 'context-pack',
+        mode: 'pack',
+        stableHash: pack.stable.hash,
+        dynamicHash: pack.dynamic.hash,
+        stableSections: pack.stable.sections,
+        dynamicSections: pack.dynamic.sections,
+        omitted: pack.dynamic.omitted,
+        asOf,
+        sourceRevisions,
+        totalTokens: pack.totalTokens,
+      });
+      return frame;
+    } catch (error) {
+      const frame = { ok: false, error: String(error?.message ?? error).slice(0, 200), at: Date.now() };
+      packFrames.set(context, frame);
+      log({ kind: 'context-pack-fallback', message: frame.error });
+      return frame;
+    }
+  }
+  function currentPackFrame(context) {
+    const frame = context && typeof context === 'object' ? packFrames.get(context) : null;
+    return frame?.ok ? frame : null;
+  }
+  function withPack(context, legacy) {
+    if (!packEnabled) return legacy();
+    const frame = packFrames.get(context);
+    if (frame?.ok) return '';
+    // 任一旧槽先于 pack 执行 ⇒ 本轮锁成 legacy，后到的 pack 不再输出第二份。
+    if (!frame?.legacy) packFrames.set(context, { legacy: true });
+    return legacy();
+  }
 
   const runSleep = (trigger) => {
     try {
@@ -432,14 +598,14 @@ export function apply(ctx, config = {}) {
   });
 
   // 条子：每个新回合的 runtime context 自动带上最近一次睡眠摘要（渲染自核心库，失败安全）。
-  registerContext({
+  registerLegacyContext({
     name: 'akasha:sleep',
     order: cfg.contextOrder,
-    text: (context) => {
+    text: (context) => withPack(context, () => {
       retarget(renderSidOf(context));
       try { return core().renderContextLine(readState()); }
       catch { return '阿卡夏·睡眠：核心库不可用（akasha\\sleep.mjs 缺失或损坏）。'; }
-    }
+    })
   });
 
   // 回查提示（v1.5，错误钩子的注入级动作）：进程内记录近期失败（工具 / agent），窗口内幂等渲染。
@@ -667,82 +833,44 @@ export function apply(ctx, config = {}) {
   } catch { /* 事件不存在 */ }
 
   // 库脉搏（v1.3；v1.5 起附加回查行）：写→可见通道——并行会话 / 脚本写入库后，下一回合即可见并命名新内容。
-  registerContext({
+  registerLegacyContext({
     name: 'akasha:pulse',
     order: cfg.pulseOrder,
-    text: (context) => {
-      retarget(renderSidOf(context));
-      try {
-        const lib = require_(join(cfg.akashaDir, 'lib.mjs'));
-        const lines = [core().renderPulseLine(lib.pulse())];
-        const recall = core().renderRecallLine(S().recentFailures, Date.now());
-        if (recall) lines.push(recall);
-        // 审核面滞后（2026-10-16）：改了核心件而独立审核没跟上 ⇒ 每回合带出（不靠人自觉跑 p0）
-        // 2026-10-16 审修：读**进程级单例**（原 S().obs 按会话分桶 ⇒ 结果落桶与渲染桶不一致时静默不显示）；
-        //   行宽受 clip 约束（原样拼是 117 字双「⚠ 审核面滞后」前缀行，超本模块 80 字纪律）。
-        const rl = reviewLagState.value;
-        if (rl && rl.code === 1 && rl.line) {
-          const n = (/：(\d+)\s*个/.exec(rl.line) || [])[1];
-          // O1（2026-10-17 batch15）：附**检查时点**——判定与节流不动，只让"这结论是什么时候的"可见
-          //   （旧结果在 60s 节流 / turn-end 驱动的窗口里会与实跑分歧：VERIFY-A4 §5-O1 的 06:35–06:46 即此）。
-          //   ⚠ 位置选在**前缀括号内**而不是行尾：行尾会被 80 字 clip 先截掉（长明细 + `…` 时点就没了），
-          //   放头部 ⇒ 无论尾巴多长，时点一定看得见；尾巴仍是可截断的"明细"。
-          const when = reviewLagState.checkedAt ? ` · 检于 ${stampOf(reviewLagState.checkedAt)}` : '';
-          lines.push(clip(`⚠ 审核面滞后（改了没审${when}）：` + (n ? `${n} 件核心件在审核戳后被改` : rl.line.replace(/^⚠\s*审核面滞后：/, ''))));
-        }
-        return lines.filter(Boolean).join('\n') || null;
-      } catch { return null; }
-    }
+    text: (context) => withPack(context, () => renderPulseText(context) || null)
   });
 
   // 并行会话感知（2026-10-18 v0）：给当前会话一条「其他主会话在做什么」的内部反馈条。
   // 用户口径：只读独立小索引（session.jsonl 的 conclusion 段），不写会话层；只送
   // 「做了什么/完成/下一步」三行；每条带 seq 指针（深查用 session_event_read，不做全局检索）；
   // 60 分钟窗口；按 meta 的 source 目录过滤掉子代理（裸 uuid 目录）；无条目静默。
-  registerContext({
+  registerLegacyContext({
     name: 'akasha:parallel',
     order: cfg.parallelOrder ?? 131,
-    text: (context) => {
-      const eventSid = curSid; // 上一个事件派生的会话 id（在 retarget 覆盖前取，补自排除）
-      retarget(renderSidOf(context));
-      try {
-        const sid = renderSidOf(context);
-        const sessionId = context?.session?.id ?? context?.agent?.session?.id;
-        const exclude = [sid, sessionId, eventSid].filter(Boolean);
-        if (exclude.length === 0) return null;
-        const p = require_(join(cfg.akashaDir, 'parallel.mjs'));
-        const r = p.collectParallel({
-          file: join(cfg.akashaDir, 'data', 'session.jsonl'),
-          metaFile: join(cfg.akashaDir, 'data', 'session-meta.json'),
-          exclude,
-          nowMs: Date.now(),
-          windowMinutes: 60,
-          limit: 2
-        });
-        const feed = p.renderParallelFeed(r);
-        return feed ? safeInject(feed, { untrusted: true }) : null;
-      } catch { return null; }
-    }
+    text: (context) => withPack(context, () => renderParallelText(context) || null)
   });
 
   // 称呼行（2026-10-10 用户复盘「长会话中期称呼易漂移」）：
   // 规则躺在会话开头那坨注入（akasha:self）里，**执行时看不到** ⇒ 必然漂移。
   // 修法＝接进每回合必然经过的执行点：这条 runtime context 行每回合都出现，内容渲染自
   // canon 的称呼体系当前版本（降级为内置短句），并写明执行点要求（交付/验收/复盘的开口句）。
-  registerContext({
+  registerLegacyContext({
     name: 'akasha:address',
     order: cfg.addressOrder,
-    text: (context) => {
-      retarget(renderSidOf(context));
-      try {
-        const lib = require_(join(cfg.akashaDir, 'lib.mjs'));
-        const recs = lib.currentRecords(lib.loadStore('canon').records);
-        const hit = recs.filter((r) => String(r.id).startsWith('canon-address-layers')).pop();
-        if (hit && typeof hit.claim === 'string') return safeInject(core().renderAddressLine(hit.claim));   // #14：canon claim 是库原文 ⇒ 必须包裹
-      } catch { /* 读库失败 → 兜底短句 */ }
-      return safeInject(core().renderAddressLine(''));
-    }
+    text: (context) => withPack(context, () => renderAddressText(context))
   });
+
+  // A 兼容：pack 是额外 provider，order 129 先于旧四槽；成功时旧槽空输出，失败时旧槽 legacy。
+  if (packEnabled) {
+    registerContext({
+      name: 'akasha:pack',
+      order: cfg.packOrder,
+      text: (context) => {
+        const frame = startPackFrame(context);
+        return frame?.ok ? [frame.pack.stable.text, frame.pack.dynamic.text].filter(Boolean).join('\n\n') : '';
+
+      }
+    });
+  }
 
   // C3｜断言前把关（stateful-fact gate，2026-10-10；评审 v2 定稿＝触发改到提问侧）
   // 为什么改触发：context 行在回合开始渲染、回复尚未产生；且本插件看不到用户消息事件 ⇒
@@ -810,7 +938,8 @@ export function apply(ctx, config = {}) {
             gist = latestIntentGist(w.text, curSid);
             // 2026-10-15（GPT 第二份复核·优先①·真根因）：**尾窗（256 KiB）截断时"未命中"是静默的** ✗ ——
             // 现场快照里最后 58 条全是 node、最近 intent 在 ~460 KB 之前 ⇒ **即使 ID 完全正确也找不到**（她双重复现）。
-            // 契约：**不许静默** —— 窗口不足且未命中时落一条观测线（不是"没有意图"，是看不见）。
+            // 契约：**不许静默** —— 尾窗被截断且其中未命中时落一条观测线（**原因未确认**：可能意图在窗口外，
+            //   也可能本回合确实没有意图；2026-10-23 GPT 审查：原注释写"窗口不足"是确定性误述）。
             // 2026-10-16 审修：① **去重**——原实现每次渲染都写（实测 10:06:45–10:17:15Z 写 80 行 ≈ 6.6 行/分，
             //   多会话并发时更密），对齐本插件其余钩子（同类 30 分钟去重）的纪律，改 **10 分钟/会话**；
             // ② **字段**——`bytes` 是读入字节数（截断时=窗口值），原记成 fileBytes 无法反映"差多远" ⇒ 记真
@@ -821,7 +950,7 @@ export function apply(ctx, config = {}) {
                 S().gateState.winMissAt = nowMs;
                 appendFileSync(join(cfg.akashaDir, 'logs', 'hooks.jsonl'), JSON.stringify({
                   ts: new Date().toISOString(), kind: 'gate-window-miss',
-                  note: '尾窗截断且未命中 intent（256KiB 窗口不足）——不是"没有意图"，是看不见；需扩大窗口或改为带索引的检索',
+                  note: '尾窗被截断且其中未命中 intent——原因未确认（可能意图在窗口之外，也可能本回合确实没有意图）；窗口 = ' + TAIL_WINDOW_BYTES + ' 字节，可用 AKASHA_TAIL_WINDOW 调大（2026-10-23：原文案写死 256KiB 且断言"窗口外一定有"，两者都超出实际证据）',
                   windowBytes: TAIL_WINDOW_BYTES, fileBytes: w.size ?? w.bytes, readBytes: w.bytes, sid: String(curSid),
                 }) + '\n', 'utf8');
               }

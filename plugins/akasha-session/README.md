@@ -1,5 +1,7 @@
 # @akasha-book/session
 
+> 2026-10-24 本地崩溃修复（基于 0.3.9-h1，具体安装态以文件哈希为准）：默认 worker 改为每项任务独立子进程，1536 MiB JS 堆预算、120 秒超时；失败记账并按现有背压重试，不再自动 inline。队列 FIFO，同会话等待任务保留最新一项；新进程按需启动、每项完成后退出。已安装插件需重启宿主后加载。
+
 > 2026-10-17 本地兼容修复（0.3.7-h3）：runtime context 在无内容或降级时统一返回空字符串，避免 Harness 提示词渲染出现 null/indexOf 错误；纯函数和内部状态的 null 含义保持原样。
 
 
@@ -13,14 +15,15 @@
 > 缺任一层不报错，只是少了那层交叉记忆。详见仓库 README §配套系统。
 ## 安装（必读）
 
-1. `git clone https://github.com/Ersith/akasha-book-v2 && cp -r akasha-book/core <目标目录>/core`
+1. `git clone https://github.com/Ersith/akasha-book && cp -r akasha-book/core <目标目录>/core`
 2. 把 `cordis.patch.yml` 里所有 `<AKASHA_DIR>` 换成 `<目标目录>/core` 的绝对路径；或删掉路径字段并设 `AKASHA_DIR=<目标目录>/core`
 3. **未替换占位符 / 目录不存在时，插件会明确报错拒绝启动**（fail-closed，不会静默降级）；日志与数据都在 `<AKASHA_DIR>` 内
 
 > 只跑核心库（CLI/MCP）：`cd core && node test.mjs && node akasha.mjs check`。
 
 > **版本（单一真值）**：以本包 `package.json` 的 `version` 为准 —— 打包时由 npm 写入 tgz 文件名与包元数据，本 README **不再复述版本号**（2026-10-13 审计 P3：此处曾写 v0.2.3 而实际已到 0.3.2-h4，差出两个功能代；同族漂移在 gate / sleep / hooks 的 README 里也都出现过，故统一改为「指真值」而不是「抄版本」）。
-> 代际看点（只列可核对的）：0.2.x＝索引 + 压缩线 + 节奏条；**0.3.0（2026-10-10）＝索引 worker 化**（见下节）；0.3.x-h 序列＝壳/装配级修订（h3→h4 仅版号差异、代码全同；**h5（2026-10-14）＝循环观测加 `ctxChars` 上下文长度代理**——只记录不干预，见「循环观测 P0」节，见 `MEMORY-TEST.md` 核实记录；**0.3.4-h2（2026-10-15）＝P0 观测线去重 + turn 相 `src` 标记**——同一逻辑事件只落首报，「流已报 + 回合复检」可被下游区分；**0.3.5-h1（2026-10-15）＝格式密度观测**——每轮把 reasoning+text 的加粗标记密度推进近 10 轮滚动窗口，节奏条显示档位 + hooks 落 `density` 线；见「格式密度」节）。查「当前装载的是哪一版」用 `plugin_manager list_bundles`；查「插件壳与核心库谁需要重启」的证据链见 `akasha/MEMORY-TEST.md`（核心 `session.mjs` 由 worker 现场 `require` ⇒ 核心改动无需重启）。
+> **0.3.9-h1（2026-10-23）**：档案不存在改为独立 kind `session-index-notfound`（不再复用 `session-index-skip`）；根目录或命中会话目录读取失败，及未命中且存在不可读子树时抛 `SCAN_FAILED`，不再把扫描不完整当成“缺档”。见 `akasha/session.mjs` 与完整性修复条目。
+> 代际看点（只列可核对的）：0.2.x＝索引 + 压缩线 + 节奏条；**0.3.0（2026-10-10）＝索引 worker 化**（见下节）；0.3.x-h 序列＝壳/装配级修订（h3→h4 仅版号差异、代码全同；**h5（2026-10-14）＝循环观测加 `ctxChars` 上下文长度代理**——只记录不干预，见「循环观测 P0」节，见 `MEMORY-TEST.md` 核实记录；**0.3.4-h2（2026-10-15）＝P0 观测线去重 + turn 相 `src` 标记**——同一逻辑事件只落首报，「流已报 + 回合复检」可被下游区分；**0.3.5-h1（2026-10-15）＝格式密度观测**——每轮把 reasoning+text 的加粗标记密度推进近 10 轮滚动窗口，节奏条显示档位 + hooks 落 `density` 线；见「格式密度」节）。查「当前装载的是哪一版」用 `plugin_manager list_bundles`；查「插件壳与核心库谁需要重启」的证据链见 `akasha/MEMORY-TEST.md`（独立子进程每项加载核心；宿主自身仍有核心模块缓存，整体修复需重启）。
 
 - **触发**：`session/event → turn/end`（按会话去抖 `minIndexIntervalMs`，默认 30s）→ `indexSession` 增量（水位 + 指纹双幂等）；`agent/status → idle` 追平；`ctx.interval` 兜底（`timerCheckMs`，默认 4 分钟——timer 属混入服务，必须 `inject:['timer']`，否则 apply 整段失败且零日志）。
 - **压缩事件行**：`session/event → compaction/end`（**成功**压缩，`data.error` 空才记；2026-10-07 复查：旧写法 `agent/created source==='compact'` 是错的——该事件的 source 只有 startup/resume）→ `session-compact` 线 + 节奏条点名（「被折叠历史的细节优先查会话层」）。
@@ -75,19 +78,19 @@ npm pack
 - **旧数据处理（第五轮 · V02）**：33037b3 已完整保留 ID 的记录无需身份格式标记，仍可精确读取。更早的短 ID 记录缺少可核对映射时不自动归属；应先核对原会话档案与完整 ID，再由用户安排重索引。本修复不迁移、不改写现有生产记录。
 - 测试同步：selftest 的「前缀归一（记账用裸 id）」用例改为「完整保留」断言（**28/28**）。
 
-## v0.3.0（2026-10-10）—— 索引 worker 化（会话层计划里的 v0.4 队列项）
+## 索引调度（2026-10-24：线程改为独立子进程）
 
-- **架构**：宿主回调只投递（`postMessage`，µs 级返回）；常驻 worker 线程 `lib/index-worker.mjs`（apply 即预热）串行执行索引、同会话排队去重；重活不再占用宿主事件循环。
+- **架构**：宿主回调只入队，`lib/index-process.mjs` 串行启动 `lib/index-worker.mjs` 子进程。每项完成后退出并释放缓存；下一项只在前一个进程关闭后启动。宿主保留 FIFO 与同会话等待任务合并。
 - **观测语义**：`session-index` 新增 `via`（worker/inline）与 `hostMs`（宿主投递耗时）；**`session-index-slow` 此后表示「后台耗时 >1.5s」——宿主卡顿请看 `hostMs` / `lagMs`**。
-- **降级链**：`indexMode: 'worker' | 'inline'`（默认 worker）；worker **连续** 3 次失败（任何成功即回零）自动降级 inline，落 `session-worker degraded-inline` 线。
-- **跨进程锁**：`indexSession` 以 `session-meta.json.lock` 串行化「读水位 → 追加 → 记账」（复用 `lib.withFileLock`；陈锁 30s 夺取、等待上限 5s）——worker 与 CLI `session index` 互斥。
+- **失败处理**：默认 `indexMode: worker` 使用独立进程；异常退出、超时与启动失败会产生索引失败结果，stat 快照不提前记成功。自动 inline 回退已移除；仅显式 `indexMode: inline` 保留同步模式。`workerRespawnMs` 旧字段可接受，但不再控制常驻 worker 重生。
+- **跨进程锁**：`indexSession` 依次锁 store→meta，复用 `lib.withFileLock`，等待上限 20 秒；子进程与 CLI 互斥。死进程留下的锁由既有锁协议恢复；半行追加由既有尾行隔离处理，失败不会提前推进水位。
 - **退出协议**：dispose → `{type:'quit'}` → drain → 关闭；5s 未退强杀。
 - **实测**：热路径 `hostMs=0`；2.1MB 档案 inline 宿主阻塞 161ms → 投递 0.06ms；真实 17.53MB 档案 1267ms → 0.37ms；部署后首个真活 `via=worker ms=840 hostMs=0 lagMs=10`。
 - **测试**：`node selftest.test.mjs`（含 2 条 worker 用例）；OSS 版同套。（2026-10-10 当时的计数为 **22/22**；现以实际输出为准——2026-10-13 实测 **27/27**，其中 1 条「store 恰好 3 行」断言因 v0.3 自动建树落地而过期，已改为断逻辑内容。）
-- 回滚：备份 `_rollback-20261010-session-v04\`；或 `indexMode: 'inline'` 即回旧路径。
+- 故障回滚应恢复同批已备份代码；把索引改回宿主 inline 会重新引入内存连带退出风险。
 
 ## 源与许可（Source & License）
 
-- 源仓库：https://github.com/Ersith/akasha-book-v2
+- 源仓库：https://github.com/Ersith/akasha-book
 - 本版本固定提交（pinned commit）：`5a55099586cfae4e7511ba433eaf202455d81c30`
 - 许可证：MIT（见仓库根 LICENSE）

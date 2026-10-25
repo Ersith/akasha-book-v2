@@ -8,7 +8,7 @@ import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { Worker } from 'node:worker_threads';
+import { IndexProcess } from './index-process.mjs';
 
 export const inject = ['systemPrompt', 'timer'];
 
@@ -28,7 +28,7 @@ const DEFAULTS = {
   loopWatch: true,
   watchMinChars: 200,
   watchCheckEvery: 480,
-  indexMode: 'worker',          // 'worker'（v0.4 默认）| 'inline'（回退）
+  indexMode: 'worker',          // 'worker'（独立子进程）| 'inline'（仅显式配置）
   workerRespawnMs: 15000
 };
 
@@ -434,33 +434,27 @@ export function apply(ctx, config = {}) {
     }
   };
 
-  // ---------- 索引 worker（v0.4）：宿主只投递任务，重活在后台线程串行跑 ----------
-  //   协议见 lib/index-worker.mjs；降级链：worker → （连续失败或 spawn 失败）→ inline 旧路径。
+  // 索引每任务独立进程；失败只记账并退避，绝不自动回宿主执行。
   const workerUrl = new URL('./index-worker.mjs', import.meta.url);
   let worker = null;
-  let workerFails = 0;
-  let workerMode = cfg.indexMode === 'inline' ? 'inline' : 'worker';
+  const workerMode = cfg.indexMode === 'inline' ? 'inline' : 'worker';
   let quitting = false;
-  let respawnTimer = null;
   let jobSeq = 0;
   const pendingJobs = new Map(); // id -> { sid, trigger, extra, hostMs, stat }
 
   const queueDepth = () => pendingJobs.size;
 
-  const scheduleRespawn = () => {
-    if (respawnTimer || quitting || workerMode !== 'worker') return;
-    respawnTimer = setTimeout(() => { respawnTimer = null; spawnWorker(); }, cfg.workerRespawnMs);
-    if (typeof respawnTimer.unref === 'function') respawnTimer.unref();
-  };
-
   const onWorkerMessage = (msg) => {
     if (!msg || typeof msg !== 'object') return;
-    if (msg.type === 'ready') { log({ kind: 'session-worker', event: 'ready', node: msg.node }); return; }
+    if (msg.type === 'ready') { log({ kind: 'session-worker', event: 'ready', node: msg.node, pid: msg.pid, isolation: msg.isolation }); return; }
     if (msg.type === 'queued') { log({ kind: 'session-worker', event: 'queued', session: msg.session, depth: msg.depth, running: msg.running }); return; }
     if (msg.type === 'bye') { log({ kind: 'session-worker', event: 'bye', processed: msg.processed }); return; }
+    if (msg.type === 'process-exit') { log({ kind: 'session-worker', event: 'process-exit', pid: msg.pid, code: msg.code, signal: msg.signal }); return; }
     if (msg.type !== 'result') return;
     const p = pendingJobs.get(msg.id);
+    if (!p) return;
     pendingJobs.delete(msg.id);
+    if (msg.superseded) return;
     const extra = p?.extra ?? {};
     if (msg.error) {
       lastFailAt.set(normSid(msg.session), Date.now());
@@ -468,8 +462,7 @@ export function apply(ctx, config = {}) {
       return;
     }
     if (p?.stat) lastStat.set(normSid(msg.session), { size: p.stat.size, mtimeMs: p.stat.mtimeMs }); // 只记成功：失败后同档可重试
-    workerFails = 0; // 「连续失败」语义：任何一次成功都回零（2026-10-10 复查修正）
-    log({ kind: 'session-index', session: msg.session, trigger: msg.trigger, turn: extra.turn ?? null, added: msg.added, skipped: msg.skipped, parseFails: msg.parseFails, frameFails: msg.frameFails ?? 0, ms: msg.ms, hostMs: p?.hostMs ?? null, lagMs: loopLagMs, via: 'worker' });
+    log({ kind: 'session-index', session: msg.session, trigger: msg.trigger, turn: extra.turn ?? null, added: msg.added, skipped: msg.skipped, parseFails: msg.parseFails, frameFails: msg.frameFails ?? 0, ms: msg.ms, hostMs: p?.hostMs ?? null, lagMs: loopLagMs, via: 'worker', pid: msg.pid, isolation: 'process' });
     if (msg.ms > 1500) log({ kind: 'session-index-slow', session: msg.session, trigger: msg.trigger, ms: msg.ms, lagMs: loopLagMs, added: msg.added, via: 'worker' });
     // 弧线树 v0.3 自动建树（2026-10-12）：索引成功后按「签名未变即复用 + 10 分钟节流」自建，结果落 tree-auto 线。
     //   机械、无 LLM；全保真仍走 ptr 回原档（节点带 children/treeFingerprint，旧代留档）。
@@ -484,48 +477,28 @@ export function apply(ctx, config = {}) {
 
   function spawnWorker() {
     if (workerMode !== 'worker' || worker || quitting) return;
-    try {
-      worker = new Worker(workerUrl);
-      worker.unref?.();
-      log({ kind: 'session-worker', event: 'spawn', pid: process.pid, pending: queueDepth() });
-      worker.on('message', (msg) => { try { onWorkerMessage(msg); } catch { /* 观测失败不拖宿主 */ } });
-      worker.on('error', (err) => {
-        log({ kind: 'session-worker-error', event: 'error', message: String(err?.message ?? err).slice(0, 300) });
-        worker = null;
-        workerFails += 1;
-        if (workerFails >= 3) { workerMode = 'inline'; log({ kind: 'session-worker', event: 'degraded-inline', fails: workerFails }); }
-        else scheduleRespawn();
-      });
-      worker.on('exit', (code) => {
-        const lost = pendingJobs.size;
-        if (lost) pendingJobs.clear();
-        log({ kind: 'session-worker', event: 'exit', code, lost, quitting });
-        worker = null;
-        if (!quitting) scheduleRespawn();
-      });
-    } catch (e) {
-      worker = null;
-      log({ kind: 'session-worker-error', event: 'spawn', message: String(e?.message ?? e).slice(0, 300) });
-    }
+    worker = new IndexProcess(workerUrl);
+    log({ kind: 'session-worker', event: 'spawn', pid: process.pid, isolation: 'process', pending: queueDepth() });
+    worker.on('message', msg => { try { onWorkerMessage(msg); } catch (error) { log({ kind: 'session-worker-error', event: 'callback', message: String(error?.message ?? error).slice(0,300) }); } });
   }
-  spawnWorker(); // 预热：apply 即起线程，首单不付冷启动
+  spawnWorker(); // 只创建轻量队列；子进程按任务启动，完成即退出。
 
-  /** 投递一个索引任务；返回 { queued:true, hostMs } 或 { queued:false }（走 inline 回退）。 */
   const dispatchIndex = (sid, file, trigger, extra, opts, st) => {
     if (workerMode !== 'worker') return { queued: false };
-    spawnWorker();
-    if (!worker) return { queued: false };
     const id = ++jobSeq;
     const t0 = Date.now();
     try {
+      spawnWorker();
+      if (!worker || quitting) throw new Error('index queue unavailable');
+      const pending = { sid, trigger, extra, hostMs: 0, stat: st };
+      pendingJobs.set(id, pending);
       worker.postMessage({ type: 'index', id, job: { akashaDir: cfg.akashaDir, session: sid, file, storeFile: cfg.storeFile, metaFile: cfg.metaFile, trigger, full: !!opts.full } });
-      const hostMs = Date.now() - t0;
-      pendingJobs.set(id, { sid, trigger, extra, hostMs, stat: st });
-      return { queued: true, hostMs };
-    } catch (e) {
-      workerFails += 1;
-      log({ kind: 'session-worker-error', event: 'post', message: String(e?.message ?? e).slice(0, 200) });
-      if (workerFails >= 3) { workerMode = 'inline'; log({ kind: 'session-worker', event: 'degraded-inline', fails: workerFails }); }
+      pending.hostMs = Date.now() - t0;
+      return { queued: true, hostMs: pending.hostMs };
+    } catch (error) {
+      pendingJobs.delete(id);
+      lastFailAt.set(normSid(sid), Date.now());
+      log({ kind: 'session-index-error', session: sid, trigger, via: 'worker', message: String(error?.message ?? error).slice(0,300) });
       return { queued: false };
     }
   };
@@ -545,7 +518,7 @@ export function apply(ctx, config = {}) {
       //   原实现只拼 'session-<id>' ⇒ 对子代理恒 not-found，每回合刷一条错误（今日 5 条全是它）。
       const arc = typeof core().resolveSessionArchive === 'function' ? core().resolveSessionArchive(cfg.sessionsRoot, sid) : null;
       const file = arc?.file ?? core().resolveSessionFile(cfg.sessionsRoot, sid);
-      if (!file) { lastFailAt.set(normSid(sid), now); log({ kind: 'session-index-error', session: sid, trigger, message: '未找到会话档案' }); return { ok: false, reason: 'not-found' }; }
+      if (!file) { lastFailAt.set(normSid(sid), now); log({ kind: 'session-index-notfound', session: sid, trigger, message: '未找到会话档案（无档案可索引；2026-10-23 原记 session-index-error，实测 152 次全为此因。GPT 审查：不得复用 session-index-skip——那个 kind 已被 unchanged/去抖占用）' }); return { ok: false, reason: 'not-found' }; }
       if (arc?.child) {
         // 认得出，但**不入小阿卡夏**：子代理转录是"派出去的活"，不是我的会话（也不该占段数/污染检索）。
         //   每个子代理只记一条 skip 观测线，避免刷屏。
@@ -577,7 +550,8 @@ export function apply(ctx, config = {}) {
         // 宿主只投递（v0.4）：结果由 worker 回传，落地线条在 onWorkerMessage
         return { ok: null, reason: 'queued', hostMs: disp.hostMs };
       }
-      // 回退：inline 旧路径（indexMode:'inline' / worker 不可用 / 连续失败降级）
+      if (workerMode !== 'inline') return { ok: false, reason: 'error' };
+      // 只有用户显式配置 indexMode:inline 才使用同步路径。
       const r = core().indexSession({ file, session: sid, storeFile: cfg.storeFile, metaFile: cfg.metaFile });
       if (st) lastStat.set(normSid(sid), { size: st.size, mtimeMs: st.mtimeMs }); // 只记成功：失败后同档可重试
       const dur = Date.now() - t0;

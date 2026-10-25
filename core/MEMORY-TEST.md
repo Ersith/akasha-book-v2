@@ -41,7 +41,7 @@
 |---|---|---|
 | 1 | 唤醒条什么条件下才发？ | 三条件：无睡眠记录 / inbox 有待办 / 审计有警告（canon-akasha-sleep-wake） |
 | 2 | 替换已装插件的 JS 为什么必须重启？ | 模块代缓存：toggle / remove+reinstall / 换路径全无效（canon-dsh-module-generation-cache） |
-| 3 | C 盘 0 字节事故最终怎么收的？ | 用户级 TEMP/TMP=D:\dsh-temp（正常重启即效）+ launcher（备选）+ cleaner；首轮实删 34.93GB（canon-dsh-workspace-changes-temp-r1） |
+| 3 | C 盘 0 字节事故最终怎么收的？ | 用户级 TEMP/TMP=<LOCAL_PATH> launcher（备选）+ cleaner；首轮实删 34.93GB（canon-dsh-workspace-changes-temp-r1） |
 | 4 | 怎么更正一条已有记录？ | 修订链：`revise` 追加新版（supersedes），`currentRecords` 取当前版（canon-akasha-revise-supersedes） |
 | 5 | 「无据的确定 ≪ 有据的不确定」的文献依据？ | Calibrated **Language** Models Must Hallucinate（2311.14648，Good-Turing 下限）+ AbstentionBench（2506.09038）（canon-frontier-usage-20261007；**库内用全称**——「Calibrated LMs」是缩写，按缩写检索会漏：2026-10-14 修正注） |
 

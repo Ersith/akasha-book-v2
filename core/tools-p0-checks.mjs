@@ -92,7 +92,7 @@ export function inputsKey(akashaDir, profilePkgPath, opt = {}) {
   try {
     const j = JSON.parse(readFileSync(profilePkgPath, 'utf8'));
     for (const k of Object.keys(j.dependencies || {}).sort()) {
-      if (/^@local\//.test(k)) h.update(k + '=' + j.dependencies[k] + '\n');
+      if (/^@akasha-book\//.test(k)) h.update(k + '=' + j.dependencies[k] + '\n');
     }
     // 2026-10-17 P2-e（复核提的"只哈希三个主文件"）：改成**整包目录**哈希（深度≤3，跳过 node_modules）。
     //   原口径会漏掉 mcp-rea/artez/cyberstrike 的 server.mjs 这类非主入口文件。
@@ -115,7 +115,7 @@ export function inputsKey(akashaDir, profilePkgPath, opt = {}) {
       }
     };
     for (const k of Object.keys(j.dependencies || {}).sort()) {
-      if (!/^@local\//.test(k)) continue;
+      if (!/^@akasha-book\//.test(k)) continue;
       walkPkgDir(k);
     }
   } catch { /* skip */ }

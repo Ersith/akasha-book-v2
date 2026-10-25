@@ -1,11 +1,11 @@
 {
-  "name": "@akasha-book/hooks",
-  "version": "1.2.10",
+  "name": "@akasha-book/akasha-hooks",
+  "version": "1.2.10-h1",
   "engines": {
     "node": ">=18"
   },
   "type": "module",
-  "description": "阿卡夏之书钩子 v1.1：回合结束 / 工具结果 / agent 错误 / 空闲 / assistant 输出审计 → append-only 记录（<AKASHA_DIR>/logs\\hooks.jsonl）",
+  "description": "阿卡夏之书钩子 v1.1：回合结束 / 工具结果 / agent 错误 / 空闲 / assistant 输出审计 → append-only 记录（<AKASHA_DIR>\\logs\\hooks.jsonl）",
   "exports": {
     ".": "./index.js"
   },
@@ -26,14 +26,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ersith/akasha-book-v2.git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
     "directory": "plugins/akasha-hooks"
   },
   "scripts": {
     "test": "node selftest.test.mjs",
     "check": "node --check index.js"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

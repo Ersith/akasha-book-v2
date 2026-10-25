@@ -3,11 +3,11 @@
 #   也可以删掉这些路径字段，改用 AKASHA_DIR 环境变量（插件默认从它推导）。
 - insert:
     - id: mcp-akasha
-      name: '@akasha-book/mcp'
+      name: '@akasha-book/mcp-akasha'
       config:
         serverName: akasha
         transport: stdio
-        command: 'node'
-        args: ['<AKASHA_DIR>/mcp.mjs']
+        command: '<LOCAL_PATH>'
+        args: ['<AKASHA_DIR>\mcp.mjs']
         toolCallTimeoutMs: 600000
         failOnStartupError: true

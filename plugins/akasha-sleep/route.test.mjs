@@ -26,7 +26,7 @@ process.env.AKASHA_DIR = DEFAULT_TRAP;
 const { apply, reviewLagState, rawOfError } = await import('./lib/index.js');
 
 const here = dirname(fileURLToPath(import.meta.url));
-// 双布局（同 selftest）：oss 仓库 = <repo>/plugins/<pkg> ⇒ <repo>/core；工作源 = <LOCAL_PATH> ⇒ <LOCAL_PATH>
+// 双布局（同 selftest）：oss 仓库 = <repo>/plugins/<pkg> ⇒ <repo>/core；工作源 = <LOCAL_PATH>/dsh-* ⇒ <AKASHA_DIR>。
 const CORE = existsSync(join(here, '..', '..', 'core', 'lib.mjs')) ? join(here, '..', '..', 'core') : join(here, '..', 'akasha');
 
 const cleanupDirs = [];

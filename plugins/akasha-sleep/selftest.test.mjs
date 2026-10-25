@@ -11,7 +11,7 @@ import { apply, buildWakeNote, isWakeNoteworthy, findPlaceholders, assertNoPlace
 
 // 活树布局：插件在 <LOCAL_PATH> <AKASHA_DIR>/（仓布局则是 ../../core）
 const here = dirname(fileURLToPath(import.meta.url));
-// 兼容双布局（2026-10-15 DS 合入修）：oss 仓库 = <repo>/plugins/<pkg> ⇒ <repo>/core；工作源 = <LOCAL_PATH> ⇒ <LOCAL_PATH>
+// 兼容双布局（2026-10-15 DS 合入修）：oss 仓库 = <repo>/plugins/<pkg> ⇒ <repo>/core；工作源 = <LOCAL_PATH>/dsh-* ⇒ <AKASHA_DIR>。
 const CORE = existsSync(join(here, '..', '..', 'core', 'lib.mjs')) ? join(here, '..', '..', 'core') : join(here, '..', 'akasha');
 const { buildTodos, distillHooks, renderContextLine, renderPulseLine, renderRecallLine, shouldSleep } = await import(pathToFileURL(join(CORE, 'sleep.mjs')).href);
 /** 把核心（sleep.mjs + lib.mjs）拷进桩目录——插件通过 akashaDir 动态加载它们。 */
@@ -98,7 +98,7 @@ const statePath = join(dir, 'sleep-state.json');
 const inboxPath = join(dir, 'inbox.jsonl');
 appendFileSync(logPath, [
   JSON.stringify({ kind: 'tool', tool: 'read', ok: true }),
-  JSON.stringify({ kind: 'tool', tool: 'edit', ok: false, message: 'old_string was not found in "<LOCAL_PATH>/x.mjs"' }),
+  JSON.stringify({ kind: 'tool', tool: 'read', ok: false, message: 'cannot read "<LOCAL_PATH>/x.mjs": ENOENT' }),
   JSON.stringify({ kind: 'gate-denied', tool: 'edit', target: '<AKASHA_DIR>/data/canon.jsonl', message: '拒绝直写 akasha/data/canon.jsonl' })
 ].join('\n') + '\n');
 

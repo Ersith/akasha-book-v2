@@ -3,9 +3,9 @@
 #   也可以删掉这些路径字段，改用 AKASHA_DIR 环境变量（插件默认从它推导）。
 - insert:
     - id: akasha-gate
-      name: '@akasha-book/gate'
+      name: '@akasha-book/akasha-gate'
       config:
-        log: '<AKASHA_DIR>/logs\hooks.jsonl'
-        dataDir: '<AKASHA_DIR>/data'
+        log: '<AKASHA_DIR>\logs\hooks.jsonl'
+        dataDir: '<AKASHA_DIR>\data'
         akashaDir: '<AKASHA_DIR>'
         sectionOrder: 700

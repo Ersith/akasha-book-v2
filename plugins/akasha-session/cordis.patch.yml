@@ -3,12 +3,12 @@
 #   也可以删掉这些路径字段，改用 AKASHA_DIR 环境变量（插件默认从它推导）。
 - insert:
     - id: akasha-session
-      name: '@akasha-book/session'
+      name: '@akasha-book/akasha-session'
       config:
-        log: '<AKASHA_DIR>/logs\hooks.jsonl'
+        log: '<AKASHA_DIR>\logs\hooks.jsonl'
         akashaDir: '<AKASHA_DIR>'
-        sessionsRoot: '<LOCAL_PATH>'
-        storeFile: '<AKASHA_DIR>/data\session.jsonl'
-        metaFile: '<AKASHA_DIR>/data\session-meta.json'
+        sessionsRoot: '<LOCAL_PATH>\official-home\sessions'
+        storeFile: '<AKASHA_DIR>\data\session.jsonl'
+        metaFile: '<AKASHA_DIR>\data\session-meta.json'
         contextOrder: 134
         minIndexIntervalMs: 30000
