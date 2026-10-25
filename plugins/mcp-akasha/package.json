@@ -1,0 +1,40 @@
+{
+  "name": "@akasha-book/mcp",
+  "version": "1.1.6",
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "type": "module",
+  "description": "阿卡夏之书 MCP 注册桥（自带 stdio 客户端；不引用任何 @deepseek-ai/* 包）",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "^0.2.0-rc.2",
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
+    "directory": "plugins/mcp-akasha"
+  },
+  "scripts": {
+    "test": "node selftest.test.mjs",
+    "check": "node --check index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

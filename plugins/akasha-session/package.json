@@ -1,0 +1,40 @@
+{
+  "name": "@akasha-book/session",
+  "version": "0.3.7",
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "type": "module",
+  "description": "阿卡夏之书会话层插件 v0.4：索引 worker 化（宿主只投递 + 常驻 worker 线程串行索引）+ 自动增量索引（turn/end 去抖）+ 压缩事件行 + 每回合节奏条 + 循环观测 P0（dry 干跑——只观测不干预；核心逻辑归 akasha\\session.mjs，可手动 node akasha.mjs session …）",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/index-worker.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "^0.2.0-rc.2",
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
+    "directory": "plugins/akasha-session"
+  },
+  "scripts": {
+    "test": "node selftest.test.mjs",
+    "check": "node --check lib/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

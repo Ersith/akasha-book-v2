@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  core-and-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Contract lint
+        run: node core/tools-check-import-direction.mjs
+      - name: Core tests
+        run: |
+          set -euo pipefail
+          AKASHA_ROOT="$PWD/core/data" AKASHA_TEST_ECHO=1 node core/test.mjs | tee /tmp/core-test.log
+          grep -q 'AKASHA_ROOT=.*data-snapshot' /tmp/core-test.log
+
+      - name: Core check
+        run: node core/akasha.mjs check
+
+      - name: Companion CLI smoke (no args expects exit 2)
+        run: |
+          set +e
+          node core/tools-companion-recall.mjs > /dev/null 2>&1
+          code=$?
+          set -e
+          test "$code" = "2"
+
+      - name: Plugin selftests
+        run: |
+          set -e
+          for d in plugins/*/; do
+            if [ -f "$d/selftest.test.mjs" ]; then
+              echo "::group::$d"
+              (cd "$d" && node selftest.test.mjs)
+              echo "::endgroup::"
+            fi
+          done

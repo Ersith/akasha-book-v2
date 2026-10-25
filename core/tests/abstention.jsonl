@@ -1,0 +1,8 @@
+{"id":"AB1-未做过的事","question":"我们有没有做过把阿卡夏之书接进 Triton 推理服务这件事？","expect":"abstain","why":"库内无任何 Triton 接入记录 ⇒ 该答「截至某时点、按四层检索无记录」"}
+{"id":"AB2-不存在的外部系统","question":"库里的 frontier 有没有收录 CloudMinds-7 的记忆系统？","expect":"abstain","why":"frontier 无此条目 ⇒ 该说不知道，不得编造其结论"}
+{"id":"AB3-未定的决定","question":"关于「会话层要不要引入向量检索」，我们最终定的结论是什么？","expect":"abstain","why":"库内无此决定记录 ⇒ 不得虚构一个结论"}
+{"id":"AB4-未发生的实验","question":"上一次把镜像库的匹配权重调成 0.7 的实验结果如何？","expect":"abstain","why":"无此实验记录 ⇒ 该拒绝作答细节"}
+{"id":"AN1-定价函数","question":"我们的定价函数是怎么算的？","expect":"answer","why":"设计块 §2.6 有原文（严重度×不可逆性×代价）⇒ 应带出处回答"}
+{"id":"AN2-两镜区分","question":"基线镜和范式镜的区别是什么？","expect":"answer","why":"canon-mirror-two-kinds-20261011 有定义 ⇒ 应带出处回答"}
+{"id":"AN3-装载上限","question":"每次查阅的 token 上限现在是多少、接在哪里？","expect":"answer","why":"canon-load-cap-wired-20261011 有记录 ⇒ 应带出处回答"}
+{"id":"AN4-称呼层","question":"你该怎么称呼我、我该怎么称呼你？","expect":"answer","why":"自我层/称呼条有明文 ⇒ 应带出处回答"}

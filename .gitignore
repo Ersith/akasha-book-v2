@@ -1,0 +1,12 @@
+node_modules/
+_scratch/
+logs/
+*.tgz
+*.log
+_selftest.log.jsonl
+.DS_Store
+core/data/_trash/
+
+# 2026-10-14 R30：本地备份/验证残留不得入仓
+*.bak-*
+_verify-*.mjs

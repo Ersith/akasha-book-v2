@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "akasha-forgetting/v1",
+  "policyVersion": "m1-fixture/v1",
+  "timePolicyVersion": "calendar-day/v1",
+  "timezone": "Asia/Shanghai",
+  "mode": "off",
+  "lambda": 0,
+  "c3Enabled": false,
+  "hGrowth": false,
+  "C2": { "floor": 0.25, "halfLifeDays": 30 },
+  "C3": { "floor": 0.25, "halfLifeDays": 7 },
+  "C4": { "widthDays": 10 }
+}

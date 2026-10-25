@@ -1,0 +1,18 @@
+{
+ "dumpConfig": {
+  "verified": true,
+  "evidence": "一次性 DSH_HOME（`--from-default-profile web` 建基线）：`dsh plugin --profile e3 add file:<临时副本>` → `--dump-config` 含 @akasha-book/mcp → `remove` 后配置逐字回到基线。三版均跑通：0.2.0-rc.2 / 0.2.1-alpha.1 / 0.2.1-alpha.2。报告：_scratch/store-e3/e3-run-*.json（2026-10-10）"
+ },
+ "isolatedRuntime": {
+  "verified": true,
+  "evidence": "同一一次性 DSH_HOME 冷启动 `dsh --profile e3 --host 127.0.0.1 --port <空闲>` → HTTP 就绪 → SIGTERM 干净退出（三版各一次）。另有**端到端注册证据**：桩 ctx + 真实 MCP 服务器（core/mcp.mjs 的临时副本 + init-example）注册到 18 个工具、真调 `akasha_check` 返回 {ok:true,errors:[]}；活树冒烟用真实库（canon 236）同样通过（2026-10-10）"
+ },
+ "realProfile": {
+  "verified": true,
+  "evidence": "真实桌面 profile（DSH 0.2.0-rc.2，端口 <PORT>）此前经官方 @deepseek-ai/dsh-mcp-client 运行 mcp__akasha__* 工具；本版改为自带 stdio 客户端后，在活树 dev 副本上以真实 core（<AKASHA_DIR>\\mcp.mjs）冒烟通过（18 工具注册 + akasha_check ok）。**切换 installed 副本需重打包 + 安装 + 重启（由用户操作）**（2026-10-10）"
+ },
+ "externalReadback": {
+  "verified": true,
+  "evidence": "npm registry 公开读回：@akasha-book/mcp 现有 1.0.0（本版 1.1.0 尚未发布）；GitHub 公开读回仓库固定 Commit 9f7076b3ec303d0d81131445ba19f13308b6426a（https://github.com/Ersith/akasha-book）（2026-10-10）"
+ }
+}

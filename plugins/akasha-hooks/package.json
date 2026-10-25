@@ -1,0 +1,39 @@
+{
+  "name": "@akasha-book/hooks",
+  "version": "1.2.10",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "description": "阿卡夏之书钩子 v1.1：回合结束 / 工具结果 / agent 错误 / 空闲 / assistant 输出审计 → append-only 记录（<AKASHA_DIR>/logs\\hooks.jsonl）",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "^0.2.0-rc.2",
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
+    "directory": "plugins/akasha-hooks"
+  },
+  "scripts": {
+    "test": "node selftest.test.mjs",
+    "check": "node --check index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

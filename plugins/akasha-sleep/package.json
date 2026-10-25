@@ -1,0 +1,40 @@
+{
+  "name": "@akasha-book/sleep",
+  "version": "1.10.32",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "description": "阿卡夏之书睡眠器 v1.5：调度与注入（蒸馏逻辑归核心库 akasha\\sleep.mjs，可手动 node akasha.mjs sleep）——空闲/定时触发 + 每回合条子 + 新会话唤醒条 + 库脉搏（写→可见通道）+ 回查提示（v1.9.0：旧空转钩子按裁定移除；v1.10.0：**行为层按裁定重挂·默认关**——判据收窄至形态 B（无正文+无工具）+ 强信号「好。」，观测线 idle-shape，idleResume:true 才自动续行；证据链 canon-idle-mechanism-20261013-r1）",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "README.md",
+    "lib/prompt-safety.js"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "^0.2.0-rc.2",
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ersith/akasha-book.git",
+    "directory": "plugins/akasha-sleep"
+  },
+  "scripts": {
+    "test": "node selftest.test.mjs",
+    "check": "node --check lib/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
