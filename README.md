@@ -125,7 +125,7 @@ node mcp.mjs                     # MCP stdio server（喂 JSON-RPC 行）
 
 ```bash
 node test.mjs                 # 核心自检：CLI / MCP / sleep / session / 数据下界与自洽
-node ../tests/run-review5.mjs # 【仅开源仓】四套行为回归：redaction / retrieval / sleep / identity
+node ../tests/run-review5.mjs # 【仅开源仓】三套随仓回归：redaction / retrieval / sleep（identity 仅在完整工作树）
 ```
 
 - 插件包各自的 `selftest.test.mjs`：在 `plugins/<包名>/` 下 `node selftest.test.mjs`。
